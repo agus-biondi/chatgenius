@@ -22,10 +22,18 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         if (developmentMode) {
-            http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+            http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/ws/**", "/ws").permitAll()
+                .requestMatchers("/topic/**").permitAll()
+                .requestMatchers("/app/**").permitAll()
+                .anyRequest().permitAll());
         } else {
             // Production security config here when needed
-            http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
+            http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/ws/**", "/ws").permitAll()
+                .requestMatchers("/topic/**").permitAll()
+                .requestMatchers("/app/**").permitAll()
+                .anyRequest().authenticated());
         }
 
         return http.build();

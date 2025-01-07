@@ -14,7 +14,6 @@ function App() {
         setIsLoading(true);
         try {
             const fetchedChannels = await channelService.getChannels();
-            console.log('Fetched channels:', fetchedChannels);
             setChannels(fetchedChannels);
             if (fetchedChannels.length > 0 && !selectedChannelId) {
                 setSelectedChannelId(fetchedChannels[0].id);

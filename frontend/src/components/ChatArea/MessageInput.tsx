@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { messageService } from '../../services/messageService';
 
 interface MessageInputProps {
@@ -9,6 +9,12 @@ interface MessageInputProps {
 export function MessageInput({ channelId, onMessageSent }: MessageInputProps) {
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Focus input when component mounts or channel changes
+    useEffect(() => {
+        inputRef.current?.focus();
+    }, [channelId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -23,6 +29,8 @@ export function MessageInput({ channelId, onMessageSent }: MessageInputProps) {
             console.error('Failed to send message:', error);
         } finally {
             setIsLoading(false);
+            // Ensure focus is maintained after state updates
+            setTimeout(() => inputRef.current?.focus(), 0);
         }
     };
 
@@ -31,6 +39,7 @@ export function MessageInput({ channelId, onMessageSent }: MessageInputProps) {
             <div className="flex gap-2 items-center font-mono">
                 <span className="opacity-70">$</span>
                 <input
+                    ref={inputRef}
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}

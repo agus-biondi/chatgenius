@@ -11,8 +11,11 @@ import com.gauntletai.agustinbiondi.chatgenius.repository.MessageRepository;
 import com.gauntletai.agustinbiondi.chatgenius.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,47 +23,47 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional
+@RequiredArgsConstructor
 public class MessageService {
     private final MessageRepository messageRepository;
-    private final UserRepository userRepository;
     private final ChannelRepository channelRepository;
+    private final UserRepository userRepository;
     private final ChannelService channelService;
     private final ReactionService reactionService;
 
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
     public MessageDto createMessage(UUID channelId, String userId, CreateMessageRequest request) {
+        User user = userRepository.findByUserId(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
         Channel channel = channelRepository.findById(channelId)
             .orElseThrow(() -> new EntityNotFoundException("Channel not found"));
 
-        User user = userRepository.findByUserId(userId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-        // Check if user is member of channel
-        if (!channelService.isMember(channel, userId)) {
-            throw new AccessDeniedException("User is not a member of this channel");
-        }
-
         Message message = new Message();
         message.setContent(request.getContent());
-        message.setChannel(channel);
         message.setCreatedBy(user);
+        message.setChannel(channel);
 
-        // Handle thread/reply
         if (request.getParentMessageId() != null) {
             Message parentMessage = messageRepository.findById(request.getParentMessageId())
                 .orElseThrow(() -> new EntityNotFoundException("Parent message not found"));
-            
-            // Parent message must be in same channel
-            if (!parentMessage.getChannel().getId().equals(channelId)) {
-                throw new IllegalArgumentException("Parent message must be in the same channel");
-            }
-            
             message.setParentMessage(parentMessage);
         }
 
-        return toDto(messageRepository.save(message));
+        Message savedMessage = messageRepository.save(message);
+        MessageDto messageDto = toDto(savedMessage);
+        
+        // Publish the new message to WebSocket subscribers
+        String destination = "/topic/channel/" + channelId;
+        log.info("Publishing WebSocket message to: {}", destination);
+        messagingTemplate.convertAndSend(destination, messageDto);
+        log.debug("Published message: {}", messageDto);
+        
+        return messageDto;
     }
 
     @Transactional(readOnly = true)
