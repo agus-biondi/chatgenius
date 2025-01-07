@@ -11,7 +11,6 @@ export function MessageInput({ channelId, onMessageSent }: MessageInputProps) {
     const [isLoading, setIsLoading] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Focus input when component mounts or channel changes
     useEffect(() => {
         inputRef.current?.focus();
     }, [channelId]);
@@ -29,30 +28,30 @@ export function MessageInput({ channelId, onMessageSent }: MessageInputProps) {
             console.error('Failed to send message:', error);
         } finally {
             setIsLoading(false);
-            // Ensure focus is maintained after state updates
             setTimeout(() => inputRef.current?.focus(), 0);
         }
     };
 
     return (
         <form onSubmit={handleSubmit} className="p-4 border-t border-[var(--terminal-green)]">
-            <div className="flex gap-2 items-center font-mono">
-                <span className="opacity-70">$</span>
+            <div className="command-prompt">
+                <span className="text-[var(--terminal-dim-green)]">guest@chat-genius</span>
+                <span className="text-[var(--terminal-dim-green)]">:~$</span>
                 <input
                     ref={inputRef}
                     type="text"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="echo 'your message'"
-                    className="flex-1 p-2 bg-transparent border-none outline-none placeholder-[var(--terminal-dim-green)]"
+                    placeholder="Type your message..."
+                    className="flex-1 bg-transparent border-none outline-none placeholder-[var(--text-secondary)] ml-2 cursor"
                     disabled={isLoading}
                 />
                 <button
                     type="submit"
-                    className="px-4 py-1 border border-[var(--terminal-green)] hover:bg-[var(--terminal-gray)] transition-colors disabled:opacity-50"
+                    className="terminal-button"
                     disabled={isLoading || !message.trim()}
                 >
-                    {isLoading ? 'sending...' : '[ENTER]'}
+                    {isLoading ? 'SENDING...' : 'SEND'}
                 </button>
             </div>
         </form>

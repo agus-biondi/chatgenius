@@ -5,6 +5,9 @@ import { ChannelList } from './components/Sidebar/ChannelList';
 import { CreateChannelButton } from './components/Sidebar/CreateChannelButton';
 import { ChatArea } from './components/ChatArea';
 
+// Temporary user for testing - replace with actual auth later
+const TEST_USER = { role: 'ADMIN' };
+
 function App() {
     const [channels, setChannels] = useState<Channel[]>([]);
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -30,30 +33,42 @@ function App() {
     }, []);
 
     return (
-        <div className="flex h-screen bg-[var(--terminal-black)] text-[var(--terminal-green)]">
-            {/* Sidebar */}
-            <div className="w-64 border-r border-[var(--terminal-green)] flex flex-col">
-                <div className="p-4 border-b border-[var(--terminal-green)]">
-                    <h1 className="text-xl font-bold tracking-wider">CHAT_GENIUS{'>_'}</h1>
-                </div>
-                {isLoading ? (
-                    <div className="flex-1 flex items-center justify-center opacity-70">
-                        Loading channels...
+        <div className="relative min-h-screen bg-[var(--terminal-black)]">
+            {/* Circuit board background pattern */}
+            <div className="absolute inset-0 circuit-pattern" />
+            
+            {/* CRT scanline effect */}
+            <div className="crt-overlay" />
+            
+            {/* Main content */}
+            <div className="relative flex h-screen p-4 gap-4">
+                {/* Sidebar */}
+                <div className="w-72 flex flex-col terminal-window overflow-hidden">
+                    <div className="p-4 border-b border-[var(--terminal-green)]">
+                        <h1 className="text-xl font-bold tracking-wider cursor">CHAT_GENIUS</h1>
                     </div>
-                ) : (
-                    <>
-                        <ChannelList
-                            channels={channels}
-                            selectedChannelId={selectedChannelId}
-                            onSelectChannel={setSelectedChannelId}
-                        />
-                        <CreateChannelButton onChannelCreated={fetchChannels} />
-                    </>
-                )}
-            </div>
+                    {isLoading ? (
+                        <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">
+                            Loading channels...
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col min-h-0">
+                            <ChannelList
+                                channels={channels}
+                                selectedChannelId={selectedChannelId}
+                                onSelectChannel={setSelectedChannelId}
+                                currentUser={TEST_USER}
+                            />
+                            <CreateChannelButton onChannelCreated={fetchChannels} />
+                        </div>
+                    )}
+                </div>
 
-            {/* Chat Area */}
-            <ChatArea channelId={selectedChannelId} />
+                {/* Chat Area */}
+                <div className="flex-1 terminal-window overflow-hidden">
+                    <ChatArea channelId={selectedChannelId} />
+                </div>
+            </div>
         </div>
     );
 }
