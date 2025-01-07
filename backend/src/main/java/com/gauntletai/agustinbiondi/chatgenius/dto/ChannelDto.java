@@ -11,7 +11,7 @@ public class ChannelDto {
     private UUID id;
     private String name;
     private boolean isDirectMessage;
-    private UUID createdById;
+    private String createdById;
     private String createdByUsername;
     private LocalDateTime createdAt;
     private Set<ChannelMemberDto> members;

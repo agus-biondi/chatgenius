@@ -14,7 +14,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 
 @RequiredArgsConstructor
 public class UserIdHeaderAuthenticationFilter extends OncePerRequestFilter {
@@ -30,8 +29,7 @@ public class UserIdHeaderAuthenticationFilter extends OncePerRequestFilter {
 
         if (userIdHeader != null) {
             try {
-                UUID userId = UUID.fromString(userIdHeader);
-                User user = userRepository.findById(userId).orElse(null);
+                User user = userRepository.findByUserId(userIdHeader).orElse(null);
 
                 if (user != null) {
                     var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));

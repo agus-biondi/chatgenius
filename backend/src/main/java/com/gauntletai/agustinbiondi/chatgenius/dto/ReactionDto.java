@@ -9,7 +9,7 @@ import java.util.UUID;
 public class ReactionDto {
     private UUID id;
     private String emoji;
-    private UUID userId;
+    private String userId;
     private String username;
     private LocalDateTime createdAt;
 } 

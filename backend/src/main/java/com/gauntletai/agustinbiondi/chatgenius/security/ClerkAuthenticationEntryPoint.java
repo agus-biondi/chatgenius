@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
+public class ClerkAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     @Override
     public void commence(
@@ -27,7 +27,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         final Map<String, Object> body = new HashMap<>();
         body.put("status", HttpServletResponse.SC_UNAUTHORIZED);
         body.put("error", "Unauthorized");
-        body.put("message", authException.getMessage());
+        body.put("message", "Invalid or missing authentication token");
         body.put("path", request.getServletPath());
 
         final ObjectMapper mapper = new ObjectMapper();

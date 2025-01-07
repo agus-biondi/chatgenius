@@ -29,5 +29,6 @@ public interface ChannelRepository extends JpaRepository<Channel, UUID> {
     
     boolean existsByNameAndIsDirectMessageFalse(String name);
     
-    Page<Channel> findByMembershipsUserIdAndNameContainingIgnoreCase(UUID userId, String name, Pageable pageable);
+    @Query("SELECT c FROM Channel c JOIN c.memberships m WHERE m.user.userId = :userId AND c.name LIKE %:name%")
+    Page<Channel> findByMembershipsUserIdAndNameContainingIgnoreCase(@Param("userId") String userId, @Param("name") String name, Pageable pageable);
 } 

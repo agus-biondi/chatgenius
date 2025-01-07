@@ -26,7 +26,7 @@ public class File {
     private String fileUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "uploaded_by", nullable = false)
+    @JoinColumn(name = "uploaded_by", nullable = false, columnDefinition = "VARCHAR(255)")
     private User uploadedBy;
 
     @ManyToOne(fetch = FetchType.LAZY)

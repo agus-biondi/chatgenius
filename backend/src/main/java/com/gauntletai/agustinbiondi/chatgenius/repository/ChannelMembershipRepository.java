@@ -14,9 +14,6 @@ import java.util.UUID;
 public interface ChannelMembershipRepository extends JpaRepository<ChannelMembership, UUID> {
     List<ChannelMembership> findByChannel(Channel channel);
     List<ChannelMembership> findByUser(User user);
-    Optional<ChannelMembership> findByChannelAndUser(Channel channel, User user);
-    Optional<ChannelMembership> findByChannelAndUser_Id(Channel channel, UUID userId);
-    boolean existsByChannelAndUser(Channel channel, User user);
-    boolean existsByChannelAndUser_Id(Channel channel, UUID userId);
-    void deleteByChannelAndUser(Channel channel, User user);
+    boolean existsByChannelAndUser_UserId(Channel channel, String userId);
+    Optional<ChannelMembership> findByChannelAndUser_UserId(Channel channel, String userId);
 } 

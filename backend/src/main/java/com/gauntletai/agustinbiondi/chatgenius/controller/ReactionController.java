@@ -21,25 +21,34 @@ public class ReactionController {
     public ResponseEntity<ReactionDto> addReaction(
         @PathVariable UUID messageId,
         @Valid @RequestBody CreateReactionRequest request,
-        @RequestHeader("X-User-ID") UUID userId
+        @RequestHeader("X-User-ID") String userId
     ) {
-        return ResponseEntity.ok(reactionService.addReaction(messageId, userId, request));
+        System.out.println("POST /api/messages/" + messageId + "/reactions - Adding reaction. userId=" + userId + ", request=" + request);
+        ReactionDto response = reactionService.addReaction(messageId, userId, request);
+        System.out.println("POST /api/messages/" + messageId + "/reactions - Reaction added. response=" + response);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{reactionId}")
     public ResponseEntity<Void> removeReaction(
         @PathVariable UUID messageId,
         @PathVariable UUID reactionId,
-        @RequestHeader("X-User-ID") UUID userId
+        @RequestHeader("X-User-ID") String userId
     ) {
+        System.out.println("DELETE /api/messages/" + messageId + "/reactions/" + reactionId + " - Removing reaction. userId=" + userId);
         reactionService.removeReaction(messageId, reactionId, userId);
-        return ResponseEntity.ok().build();
+        System.out.println("DELETE /api/messages/" + messageId + "/reactions/" + reactionId + " - Reaction removed");
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
-    public ResponseEntity<List<ReactionDto>> getReactions(
-        @PathVariable UUID messageId
+    public ResponseEntity<List<ReactionDto>> getMessageReactions(
+        @PathVariable UUID messageId,
+        @RequestHeader("X-User-ID") String userId
     ) {
-        return ResponseEntity.ok(reactionService.findByMessageId(messageId));
+        System.out.println("GET /api/messages/" + messageId + "/reactions - Getting reactions. userId=" + userId);
+        List<ReactionDto> response = reactionService.findByMessageId(messageId);
+        System.out.println("GET /api/messages/" + messageId + "/reactions - Retrieved " + response.size() + " reactions");
+        return ResponseEntity.ok(response);
     }
 } 

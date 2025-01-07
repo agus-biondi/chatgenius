@@ -3,12 +3,10 @@ package com.gauntletai.agustinbiondi.chatgenius.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -16,13 +14,11 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @ToString(exclude = {"createdChannels", "messages", "channelMemberships"})
-@EqualsAndHashCode(of = "id")
+@EqualsAndHashCode(of = "userId")
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @UuidGenerator
-    @Column(columnDefinition = "UUID", updatable = false, nullable = false)
-    private UUID id;
+    @Column(name = "user_id", nullable = false, columnDefinition = "VARCHAR(255)")
+    private String userId;
 
     @Column(nullable = false, unique = true)
     private String username;

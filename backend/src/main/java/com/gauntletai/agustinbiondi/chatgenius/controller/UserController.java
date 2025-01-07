@@ -11,7 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
@@ -26,7 +25,7 @@ public class UserController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<UserDto> getUser(@PathVariable UUID userId) {
+    public ResponseEntity<UserDto> getUser(@PathVariable String userId) {
         return ResponseEntity.ok(userService.getUser(userId));
     }
 
@@ -37,8 +36,8 @@ public class UserController {
 
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> deleteUser(
-        @PathVariable UUID userId,
-        @RequestHeader("X-User-ID") UUID requesterId
+        @PathVariable String userId,
+        @RequestHeader("X-User-ID") String requesterId
     ) {
         userService.deleteUser(userId, requesterId);
         return ResponseEntity.noContent().build();
@@ -46,8 +45,8 @@ public class UserController {
 
     @PostMapping("/{userId}/promote")
     public ResponseEntity<Void> promoteToAdmin(
-        @PathVariable UUID userId,
-        @RequestHeader("X-User-ID") UUID requesterId
+        @PathVariable String userId,
+        @RequestHeader("X-User-ID") String requesterId
     ) {
         userService.promoteToAdmin(userId, requesterId);
         return ResponseEntity.ok().build();
@@ -55,8 +54,8 @@ public class UserController {
 
     @PostMapping("/{userId}/demote")
     public ResponseEntity<Void> demoteToUser(
-        @PathVariable UUID userId,
-        @RequestHeader("X-User-ID") UUID requesterId
+        @PathVariable String userId,
+        @RequestHeader("X-User-ID") String requesterId
     ) {
         userService.demoteToUser(userId, requesterId);
         return ResponseEntity.ok().build();

@@ -11,7 +11,7 @@ public class MessageDto {
     private UUID id;
     private String content;
     private UUID channelId;
-    private UUID createdById;
+    private String createdById;
     private String createdByUsername;
     private LocalDateTime createdAt;
     private UUID parentMessageId;

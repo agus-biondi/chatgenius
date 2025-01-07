@@ -7,19 +7,48 @@ import com.gauntletai.agustinbiondi.chatgenius.model.UserRole;
 import com.gauntletai.agustinbiondi.chatgenius.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
+import org.springframework.context.event.EventListener;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class UserService {
+    private static final String TEST_USER_ID = "test_11111111-1111-1111-1111-111111111111";
+    
     private final UserRepository userRepository;
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void initOnStartup() {
+        init();
+    }
+
+    public void init() {
+        log.info("Initializing test user...");
+        try {
+            if (userRepository.findByUserId(TEST_USER_ID).isEmpty()) {
+                log.info("Test user not found, creating...");
+                User testUser = new User();
+                testUser.setUserId(TEST_USER_ID);
+                testUser.setUsername("Test User");
+                testUser.setEmail("test@example.com");
+                testUser.setRole(UserRole.ADMIN);
+                userRepository.save(testUser);
+                log.info("Test user created successfully");
+            } else {
+                log.info("Test user already exists");
+            }
+        } catch (Exception e) {
+            log.error("Error creating test user", e);
+        }
+    }
 
     public UserDto createUser(CreateUserRequest request) {
         // Check if username or email already exists
@@ -31,6 +60,7 @@ public class UserService {
         }
 
         User user = new User();
+        user.setUserId(request.getUserId());
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setRole(UserRole.USER);
@@ -39,8 +69,8 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserDto getUser(UUID userId) {
-        return userRepository.findById(userId)
+    public UserDto getUser(String userId) {
+        return userRepository.findByUserId(userId)
             .map(this::toDto)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
     }
@@ -51,8 +81,8 @@ public class UserService {
             .map(this::toDto);
     }
 
-    public void deleteUser(UUID userId, UUID requesterId) {
-        User requester = userRepository.findById(requesterId)
+    public void deleteUser(String userId, String requesterId) {
+        User requester = userRepository.findByUserId(requesterId)
             .orElseThrow(() -> new EntityNotFoundException("Requester not found"));
 
         // Only admin can delete users
@@ -63,8 +93,8 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 
-    public void promoteToAdmin(UUID userId, UUID requesterId) {
-        User requester = userRepository.findById(requesterId)
+    public void promoteToAdmin(String userId, String requesterId) {
+        User requester = userRepository.findByUserId(requesterId)
             .orElseThrow(() -> new EntityNotFoundException("Requester not found"));
 
         // Only admin can promote users
@@ -72,15 +102,15 @@ public class UserService {
             throw new AccessDeniedException("Only admin can promote users");
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         user.setRole(UserRole.ADMIN);
         userRepository.save(user);
     }
 
-    public void demoteToUser(UUID userId, UUID requesterId) {
-        User requester = userRepository.findById(requesterId)
+    public void demoteToUser(String userId, String requesterId) {
+        User requester = userRepository.findByUserId(requesterId)
             .orElseThrow(() -> new EntityNotFoundException("Requester not found"));
 
         // Only admin can demote users
@@ -88,7 +118,7 @@ public class UserService {
             throw new AccessDeniedException("Only admin can demote users");
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         // Cannot demote last admin
@@ -103,7 +133,7 @@ public class UserService {
 
     private UserDto toDto(User user) {
         UserDto dto = new UserDto();
-        dto.setId(user.getId());
+        dto.setUserId(user.getUserId());
         dto.setUsername(user.getUsername());
         dto.setEmail(user.getEmail());
         dto.setRole(user.getRole());

@@ -32,7 +32,7 @@ public class Message {
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
+    @JoinColumn(name = "created_by", nullable = false, columnDefinition = "VARCHAR(255)")
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)

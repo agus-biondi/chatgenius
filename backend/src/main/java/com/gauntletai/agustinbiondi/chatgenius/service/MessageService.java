@@ -30,11 +30,11 @@ public class MessageService {
     private final ChannelService channelService;
     private final ReactionService reactionService;
 
-    public MessageDto createMessage(UUID channelId, UUID userId, CreateMessageRequest request) {
+    public MessageDto createMessage(UUID channelId, String userId, CreateMessageRequest request) {
         Channel channel = channelRepository.findById(channelId)
             .orElseThrow(() -> new EntityNotFoundException("Channel not found"));
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         // Check if user is member of channel
@@ -64,7 +64,7 @@ public class MessageService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MessageDto> getChannelMessages(UUID channelId, UUID userId, Pageable pageable) {
+    public Page<MessageDto> getChannelMessages(UUID channelId, String userId, Pageable pageable) {
         Channel channel = channelRepository.findById(channelId)
             .orElseThrow(() -> new EntityNotFoundException("Channel not found"));
 
@@ -78,7 +78,7 @@ public class MessageService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MessageDto> getThreadMessages(UUID messageId, UUID userId, Pageable pageable) {
+    public Page<MessageDto> getThreadMessages(UUID messageId, String userId, Pageable pageable) {
         Message parentMessage = messageRepository.findById(messageId)
             .orElseThrow(() -> new EntityNotFoundException("Message not found"));
 
@@ -91,16 +91,16 @@ public class MessageService {
             .map(this::toDto);
     }
 
-    public void deleteMessage(UUID messageId, UUID userId) {
+    public void deleteMessage(UUID messageId, String userId) {
         Message message = messageRepository.findById(messageId)
             .orElseThrow(() -> new EntityNotFoundException("Message not found"));
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         // Only message creator, channel creator, or admin can delete
-        if (!message.getCreatedBy().getId().equals(userId) && 
-            !message.getChannel().getCreatedBy().getId().equals(userId) && 
+        if (!message.getCreatedBy().getUserId().equals(userId) && 
+            !message.getChannel().getCreatedBy().getUserId().equals(userId) && 
             user.getRole() != UserRole.ADMIN) {
             throw new AccessDeniedException("Not authorized to delete this message");
         }
@@ -109,7 +109,7 @@ public class MessageService {
     }
 
     @Transactional(readOnly = true)
-    public Page<MessageDto> searchMessages(UUID channelId, UUID userId, String query, Pageable pageable) {
+    public Page<MessageDto> searchMessages(UUID channelId, String userId, String query, Pageable pageable) {
         Channel channel = channelRepository.findById(channelId)
             .orElseThrow(() -> new EntityNotFoundException("Channel not found"));
 
@@ -122,12 +122,12 @@ public class MessageService {
             .map(this::toDto);
     }
 
-    public MessageDto updateMessage(UUID messageId, UUID userId, CreateMessageRequest request) {
+    public MessageDto updateMessage(UUID messageId, String userId, CreateMessageRequest request) {
         Message message = messageRepository.findById(messageId)
             .orElseThrow(() -> new EntityNotFoundException("Message not found"));
 
         // Only creator can update message
-        if (!message.getCreatedBy().getId().equals(userId)) {
+        if (!message.getCreatedBy().getUserId().equals(userId)) {
             throw new AccessDeniedException("Only message creator can update the message");
         }
 
@@ -140,7 +140,7 @@ public class MessageService {
         dto.setId(message.getId());
         dto.setContent(message.getContent());
         dto.setChannelId(message.getChannel().getId());
-        dto.setCreatedById(message.getCreatedBy().getId());
+        dto.setCreatedById(message.getCreatedBy().getUserId());
         dto.setCreatedByUsername(message.getCreatedBy().getUsername());
         dto.setCreatedAt(message.getCreatedAt());
         

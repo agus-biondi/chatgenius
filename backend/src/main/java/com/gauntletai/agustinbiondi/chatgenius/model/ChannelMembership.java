@@ -24,7 +24,7 @@ public class ChannelMembership {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, columnDefinition = "VARCHAR(255)")
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)

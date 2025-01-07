@@ -34,11 +34,11 @@ public class FileService {
 
     private final Path fileStorageLocation = Paths.get("uploads");
 
-    public FileDto uploadFile(UUID channelId, UUID userId, MultipartFile file) throws IOException {
+    public FileDto uploadFile(UUID channelId, String userId, MultipartFile file) throws IOException {
         Channel channel = channelRepository.findById(channelId)
             .orElseThrow(() -> new EntityNotFoundException("Channel not found"));
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         // Check if user is member of channel
@@ -69,7 +69,7 @@ public class FileService {
     }
 
     @Transactional(readOnly = true)
-    public Page<FileDto> getChannelFiles(UUID channelId, UUID userId, Pageable pageable) {
+    public Page<FileDto> getChannelFiles(UUID channelId, String userId, Pageable pageable) {
         Channel channel = channelRepository.findById(channelId)
             .orElseThrow(() -> new EntityNotFoundException("Channel not found"));
 
@@ -82,16 +82,16 @@ public class FileService {
             .map(this::toDto);
     }
 
-    public void deleteFile(UUID fileId, UUID userId) throws IOException {
+    public void deleteFile(UUID fileId, String userId) throws IOException {
         File file = fileRepository.findById(fileId)
             .orElseThrow(() -> new EntityNotFoundException("File not found"));
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         // Only file uploader, channel creator, or admin can delete
-        if (!file.getUploadedBy().getId().equals(userId) && 
-            !file.getChannel().getCreatedBy().getId().equals(userId) && 
+        if (!file.getUploadedBy().getUserId().equals(userId) && 
+            !file.getChannel().getCreatedBy().getUserId().equals(userId) && 
             user.getRole() != UserRole.ADMIN) {
             throw new AccessDeniedException("Not authorized to delete this file");
         }
@@ -110,7 +110,7 @@ public class FileService {
         dto.setId(file.getId());
         dto.setFilename(file.getFilename());
         dto.setFileUrl(file.getFileUrl());
-        dto.setUploadedById(file.getUploadedBy().getId());
+        dto.setUploadedById(file.getUploadedBy().getUserId());
         dto.setUploadedByUsername(file.getUploadedBy().getUsername());
         dto.setChannelId(file.getChannel().getId());
         dto.setUploadedAt(file.getUploadedAt());

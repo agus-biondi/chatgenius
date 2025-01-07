@@ -27,11 +27,11 @@ public class ReactionService {
     private final UserRepository userRepository;
     private final ChannelService channelService;
 
-    public ReactionDto addReaction(UUID messageId, UUID userId, CreateReactionRequest request) {
+    public ReactionDto addReaction(UUID messageId, String userId, CreateReactionRequest request) {
         Message message = messageRepository.findById(messageId)
             .orElseThrow(() -> new EntityNotFoundException("Message not found"));
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
         // Check if user is member of channel
@@ -52,7 +52,7 @@ public class ReactionService {
         return toDto(reactionRepository.save(reaction));
     }
 
-    public void removeReaction(UUID messageId, UUID reactionId, UUID userId) {
+    public void removeReaction(UUID messageId, UUID reactionId, String userId) {
         Reaction reaction = reactionRepository.findById(reactionId)
             .orElseThrow(() -> new EntityNotFoundException("Reaction not found"));
 
@@ -62,7 +62,7 @@ public class ReactionService {
         }
 
         // Only reaction creator can remove it
-        if (!reaction.getUser().getId().equals(userId)) {
+        if (!reaction.getUser().getUserId().equals(userId)) {
             throw new AccessDeniedException("Only reaction creator can remove it");
         }
 
@@ -73,7 +73,7 @@ public class ReactionService {
         ReactionDto dto = new ReactionDto();
         dto.setId(reaction.getId());
         dto.setEmoji(reaction.getEmoji());
-        dto.setUserId(reaction.getUser().getId());
+        dto.setUserId(reaction.getUser().getUserId());
         dto.setUsername(reaction.getUser().getUsername());
         dto.setCreatedAt(reaction.getCreatedAt());
         return dto;

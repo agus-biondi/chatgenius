@@ -20,6 +20,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @ToString(exclude = {"createdBy", "memberships", "messages", "files"})
 @EqualsAndHashCode(of = "id")
 public class Channel {
@@ -33,10 +35,11 @@ public class Channel {
     private String name;
 
     @Column(name = "is_direct_message", nullable = false)
+    @Builder.Default
     private boolean isDirectMessage = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
+    @JoinColumn(name = "created_by", nullable = false, columnDefinition = "VARCHAR(255)")
     private User createdBy;
 
     @CreationTimestamp
@@ -44,11 +47,14 @@ public class Channel {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<ChannelMembership> memberships = new HashSet<>();
 
     @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<Message> messages = new HashSet<>();
 
     @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<File> files = new HashSet<>();
 } 
