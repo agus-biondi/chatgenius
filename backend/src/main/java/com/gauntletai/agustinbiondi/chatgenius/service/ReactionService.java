@@ -42,6 +42,7 @@ public class ReactionService {
         Message message = messageRepository.findById(messageId)
             .orElseThrow(() -> new EntityNotFoundException("Message not found"));
         log.debug("Found message: {}", message);
+        log.debug("Message ID: {}", message.getId());
 
         User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -61,29 +62,31 @@ public class ReactionService {
         reaction.setMessage(message);
         reaction.setUser(user);
 
-        // Save the reaction and ensure transaction is committed
-        log.debug("Saving reaction with message: {}", reaction.getMessage());
+        // Save the reaction
         Reaction savedReaction = reactionRepository.save(reaction);
-        reactionRepository.flush();
-
-        // Reload to get the updated timestamp and ensure message is loaded
-        log.debug("Reloading saved reaction with id: {}", savedReaction.getId());
-        Reaction refreshedReaction = reactionRepository.findByIdWithMessage(savedReaction.getId())
-            .orElseThrow(() -> new EntityNotFoundException("Reaction not found after save"));
-        log.debug("Refreshed reaction message: {}", refreshedReaction.getMessage());
+        log.debug("Saved reaction: {}", savedReaction);
+        log.debug("Saved reaction's message ID: {}", savedReaction.getMessage().getId());
         
-        // Send WebSocket notification
-        ReactionDto reactionDto = toDto(refreshedReaction);
-        log.debug("Created ReactionDto: {}", reactionDto);
-        log.debug("ReactionDto fields - id: {}, emoji: {}, userId: {}, username: {}, createdAt: {}, messageId: {}", 
-            reactionDto.getId(), 
-            reactionDto.getEmoji(), 
-            reactionDto.getUserId(), 
-            reactionDto.getUsername(), 
-            reactionDto.getCreatedAt(), 
-            reactionDto.getMessageId()
+        // Create DTO using the saved reaction and original message
+        ReactionDto reactionDto = toDto(savedReaction);
+        log.info("MessageId after toDto: {}", reactionDto.getMessageId());
+        
+        // Double-check messageId is set
+        if (reactionDto.getMessageId() == null) {
+            log.info("MessageId was null, setting it explicitly");
+            reactionDto.setMessageId(messageId);
+        }
+        
+        String destination = "/topic/channel/" + message.getChannel().getId();
+        log.info("Reaction DTO to be sent: id={}, emoji={}, userId={}, username={}, messageId={}, createdAt={}", 
+            reactionDto.getId(),
+            reactionDto.getEmoji(),
+            reactionDto.getUserId(),
+            reactionDto.getUsername(),
+            reactionDto.getMessageId(),
+            reactionDto.getCreatedAt()
         );
-        String destination = "/topic/channel/" + message.getChannel().getId() + "/reactions";
+        log.info("Full Reaction DTO: {}", reactionDto);
         log.debug("Publishing reaction to WebSocket topic: {}", destination);
         messagingTemplate.convertAndSend(destination, reactionDto);
         log.debug("Successfully published reaction to WebSocket");
@@ -92,7 +95,7 @@ public class ReactionService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     protected void publishReaction(ReactionDto reactionDto, UUID channelId) {
         // Broadcast the reaction to WebSocket subscribers
-        String destination = "/topic/channel/" + channelId + "/reactions";
+        String destination = "/topic/channel/" + channelId;
         log.debug("Reaction DTO before publishing: {}", reactionDto);
         messagingTemplate.convertAndSend(destination, reactionDto);
         log.debug("Published reaction: {}", reactionDto);
@@ -124,16 +127,14 @@ public class ReactionService {
         dto.setCreatedAt(reaction.getCreatedAt());
         
         Message message = reaction.getMessage();
-        log.debug("Message from reaction: {}", message);
         if (message != null) {
             UUID messageId = message.getId();
-            log.debug("Setting messageId to: {}", messageId);
+            log.debug("Setting messageId in DTO: {}", messageId);
             dto.setMessageId(messageId);
         } else {
             log.warn("Message is null for reaction: {}", reaction.getId());
         }
         
-        log.debug("Created ReactionDto: {}", dto);
         return dto;
     }
 

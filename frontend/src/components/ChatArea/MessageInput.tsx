@@ -29,6 +29,9 @@ export function MessageInput({ channelId }: MessageInputProps) {
                 content: message.trim()
             });
             setMessage('');
+            setTimeout(() => {
+                textareaRef.current?.focus();
+            }, 0);
         } catch (error) {
             console.error('Failed to send message:', error);
         } finally {
@@ -42,6 +45,13 @@ export function MessageInput({ channelId }: MessageInputProps) {
             handleSubmit(e);
         }
     };
+
+    // Focus the textarea when the component mounts or channel changes
+    useEffect(() => {
+        setTimeout(() => {
+            textareaRef.current?.focus();
+        }, 0);
+    }, [channelId]);
 
     return (
         <div className="border-t border-[var(--terminal-green)]">

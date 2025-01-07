@@ -24,6 +24,4 @@ public interface ReactionRepository extends JpaRepository<Reaction, UUID> {
     
     void deleteByMessageAndUser(Message message, User user);
 
-    @Query("SELECT r FROM Reaction r JOIN FETCH r.message WHERE r.id = :id")
-    Optional<Reaction> findByIdWithMessage(@Param("id") UUID id);
 } 
