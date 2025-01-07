@@ -40,8 +40,8 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
     };
 
     return (
-        <div className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
-            <div className="mb-2 opacity-70">$ ls channels/</div>
+        <div className="flex flex-col gap-1 p-4 overflow-y-auto">
+            <div className="mb-2 opacity-70 font-bold text-lg">$ ls channels/</div>
             {channels.length === 0 ? (
                 <div className="opacity-70">No channels found. Create one below!</div>
             ) : (

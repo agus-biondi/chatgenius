@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.context.event.EventListener;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -131,11 +133,18 @@ public class UserService {
         userRepository.save(user);
     }
 
+    @Transactional(readOnly = true)
+    public List<UserDto> getActiveUsers() {
+        // For now, return all users as active. In a real app, we'd track user activity
+        return userRepository.findAll().stream()
+            .map(this::toDto)
+            .collect(Collectors.toList());
+    }
+
     private UserDto toDto(User user) {
         UserDto dto = new UserDto();
         dto.setUserId(user.getUserId());
         dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
         dto.setRole(user.getRole());
         dto.setCreatedAt(user.getCreatedAt());
         return dto;
