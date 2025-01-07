@@ -1,0 +1,117 @@
+@startuml Architecture Overview
+
+' Style
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam handwritten false
+
+package "Controllers" {
+    [MessageController]
+    [ChannelController]
+    [UserController]
+    [ReactionController]
+    [FileController]
+}
+
+package "Services" {
+    [MessageService]
+    [ChannelService]
+    [UserService]
+    [ReactionService]
+    [FileService]
+}
+
+package "Repositories" {
+    [MessageRepository]
+    [ChannelRepository]
+    [UserRepository]
+    [ReactionRepository]
+    [FileRepository]
+    [ChannelMembershipRepository]
+}
+
+database "PostgreSQL" {
+    [Messages]
+    [Channels]
+    [Users]
+    [Reactions]
+    [Files]
+    [ChannelMemberships]
+}
+
+' Controller -> Service
+MessageController --> MessageService
+ChannelController --> ChannelService
+UserController --> UserService
+ReactionController --> ReactionService
+FileController --> FileService
+
+' Service -> Repository
+MessageService --> MessageRepository
+MessageService --> ChannelRepository
+ChannelService --> ChannelRepository
+ChannelService --> UserRepository
+ChannelService --> ChannelMembershipRepository
+UserService --> UserRepository
+ReactionService --> ReactionRepository
+ReactionService --> MessageRepository
+FileService --> FileRepository
+FileService --> ChannelRepository
+
+' Repository -> Database
+MessageRepository --> Messages
+ChannelRepository --> Channels
+UserRepository --> Users
+ReactionRepository --> Reactions
+FileRepository --> Files
+ChannelMembershipRepository --> ChannelMemberships
+
+@enduml
+
+@startuml Authentication Flow
+
+actor Client
+participant "Frontend" as FE
+participant "AWS Cognito" as Cognito
+participant "SecurityConfig" as SC
+participant "JwtFilter" as JF
+participant "UserService" as US
+database "Database" as DB
+
+Client -> FE: Login Request
+FE -> Cognito: Authenticate
+Cognito --> FE: JWT Token
+FE -> SC: API Request + JWT
+SC -> JF: Validate Token
+JF -> US: Get/Create User
+US -> DB: Query/Save User
+US --> JF: User Object
+JF --> SC: Authentication Object
+SC --> FE: API Response
+
+@enduml
+
+@startuml Message Flow
+
+actor User
+participant "MessageController" as MC
+participant "MessageService" as MS
+participant "ChannelService" as CS
+participant "MessageRepository" as MR
+participant "ChannelRepository" as CR
+database "Database" as DB
+
+User -> MC: Send Message
+MC -> MS: createMessage()
+MS -> CS: checkAccess()
+CS -> CR: findById()
+CR --> CS: Channel
+CS --> MS: OK
+MS -> MR: save()
+MR -> DB: Insert
+DB --> MR: Message
+MR --> MS: Message
+MS --> MC: MessageDTO
+MC --> User: Response
+
+@enduml 

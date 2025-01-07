@@ -15,11 +15,11 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = {"createdChannels", "messages", "channels"})
+@ToString(exclude = {"createdChannels", "messages", "channelMemberships"})
 @EqualsAndHashCode(of = "id")
 public class User {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     @UuidGenerator
     @Column(columnDefinition = "UUID", updatable = false, nullable = false)
     private UUID id;
@@ -38,12 +38,12 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @OneToMany(mappedBy = "createdBy")
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Channel> createdChannels = new HashSet<>();
 
-    @OneToMany(mappedBy = "createdBy")
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Message> messages = new HashSet<>();
 
-    @ManyToMany(mappedBy = "members")
-    private Set<Channel> channels = new HashSet<>();
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ChannelMembership> channelMemberships = new HashSet<>();
 } 

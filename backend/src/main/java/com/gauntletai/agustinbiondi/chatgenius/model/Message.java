@@ -4,22 +4,22 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
-import org.hibernate.annotations.Type;
-import com.vladmihalcea.hibernate.type.json.JsonType;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "messages",
+       indexes = {
+           @Index(name = "idx_messages_channel_created", columnList = "channel_id,created_at"),
+           @Index(name = "idx_messages_parent", columnList = "parent_message_id")
+       })
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = {"createdBy", "channel", "parentMessage", "replies"})
+@ToString(exclude = {"createdBy", "channel", "parentMessage", "replies", "reactions"})
 @EqualsAndHashCode(of = "id")
 public class Message {
     @Id
@@ -43,12 +43,11 @@ public class Message {
     @JoinColumn(name = "parent_message_id")
     private Message parentMessage;
 
-    @OneToMany(mappedBy = "parentMessage")
+    @OneToMany(mappedBy = "parentMessage", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Message> replies = new HashSet<>();
 
-    @Type(JsonType.class)
-    @Column(columnDefinition = "jsonb")
-    private List<MessageReaction> reactions = new ArrayList<>();
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Reaction> reactions = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

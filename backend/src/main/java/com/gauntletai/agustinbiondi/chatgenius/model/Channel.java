@@ -11,15 +11,20 @@ import java.util.Set;
 import java.util.UUID;
 
 @Entity
-@Table(name = "channels")
+@Table(name = "channels",
+       indexes = @Index(name = "idx_channels_name", columnList = "name"),
+       uniqueConstraints = @UniqueConstraint(
+           name = "uk_channels_name_non_dm",
+           columnNames = {"name", "is_direct_message"}
+       ))
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = {"createdBy", "members", "messages", "files"})
+@ToString(exclude = {"createdBy", "memberships", "messages", "files"})
 @EqualsAndHashCode(of = "id")
 public class Channel {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     @UuidGenerator
     @Column(columnDefinition = "UUID", updatable = false, nullable = false)
     private UUID id;
@@ -38,13 +43,8 @@ public class Channel {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @ManyToMany
-    @JoinTable(
-        name = "channel_memberships",
-        joinColumns = @JoinColumn(name = "channel_id"),
-        inverseJoinColumns = @JoinColumn(name = "user_id")
-    )
-    private Set<User> members = new HashSet<>();
+    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ChannelMembership> memberships = new HashSet<>();
 
     @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Message> messages = new HashSet<>();

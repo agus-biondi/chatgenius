@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,13 +16,18 @@ import java.util.UUID;
 public interface ChannelRepository extends JpaRepository<Channel, UUID> {
     List<Channel> findByCreatedBy(User user);
     
-    @Query("SELECT c FROM Channel c JOIN c.members m WHERE m = :user")
-    Page<Channel> findChannelsByMember(User user, Pageable pageable);
+    @Query("SELECT c FROM Channel c JOIN c.memberships m WHERE m.user = :user")
+    Page<Channel> findChannelsByMember(@Param("user") User user, Pageable pageable);
     
-    @Query("SELECT c FROM Channel c WHERE c.isDirectMessage = true AND :user MEMBER OF c.members")
-    List<Channel> findDirectMessageChannels(User user);
+    @Query("SELECT c FROM Channel c JOIN c.memberships m WHERE c.isDirectMessage = true AND m.user = :user")
+    Page<Channel> findDirectMessageChannels(@Param("user") User user, Pageable pageable);
     
-    List<Channel> findByNameContainingIgnoreCase(String name);
+    @Query("SELECT c FROM Channel c JOIN c.memberships m WHERE c.isDirectMessage = true AND m.user = :user")
+    List<Channel> findAllDirectMessageChannels(@Param("user") User user);
+    
+    Page<Channel> findByNameContainingIgnoreCase(String name, Pageable pageable);
     
     boolean existsByNameAndIsDirectMessageFalse(String name);
+    
+    Page<Channel> findByMembershipsUserIdAndNameContainingIgnoreCase(UUID userId, String name, Pageable pageable);
 } 
