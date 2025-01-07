@@ -19,6 +19,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,7 +38,8 @@ public class MessageService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    public MessageDto createMessage(UUID channelId, String userId, CreateMessageRequest request) {
+    @Transactional
+    public void createMessage(UUID channelId, String userId, CreateMessageRequest request) {
         User user = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
         Channel channel = channelRepository.findById(channelId)
@@ -54,16 +56,29 @@ public class MessageService {
             message.setParentMessage(parentMessage);
         }
 
+        // Save the message and ensure transaction is committed
         Message savedMessage = messageRepository.save(message);
-        MessageDto messageDto = toDto(savedMessage);
+        messageRepository.flush();
+
+        // Reload to get the updated timestamp
+        Message refreshedMessage = messageRepository.findById(savedMessage.getId())
+            .orElseThrow(() -> new EntityNotFoundException("Message not found after save"));
         
-        // Publish the new message to WebSocket subscribers
+        // Send WebSocket notification
+        MessageDto messageDto = toDto(refreshedMessage);
         String destination = "/topic/channel/" + channelId;
+        log.info("Publishing message to WebSocket topic: {}", destination);
+        messagingTemplate.convertAndSend(destination, messageDto);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void publishMessage(MessageDto messageDto) {
+        // Publish the new message to WebSocket subscribers
+        String destination = "/topic/channel/" + messageDto.getChannelId();
         log.info("Publishing WebSocket message to: {}", destination);
+        log.debug("Message DTO before publishing: {}", messageDto);
         messagingTemplate.convertAndSend(destination, messageDto);
         log.debug("Published message: {}", messageDto);
-        
-        return messageDto;
     }
 
     @Transactional(readOnly = true)

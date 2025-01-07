@@ -45,7 +45,8 @@ function App() {
                 {/* Sidebar */}
                 <div className="w-72 flex flex-col terminal-window overflow-hidden">
                     <div className="p-4 border-b border-[var(--terminal-green)]">
-                        <h1 className="text-xl font-bold tracking-wider cursor">CHAT_GENIUS</h1>
+                        <h1 className="text-xl font-bold tracking-wider cursor">ELECTROCHAT_9000</h1>
+                        <div className="text-xs text-[var(--terminal-dim-green)] mt-1">Your Communication To Tomorrow, Today</div>
                     </div>
                     {isLoading ? (
                         <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">

@@ -1,5 +1,6 @@
 package com.gauntletai.agustinbiondi.chatgenius.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -12,4 +13,7 @@ public class ReactionDto {
     private String userId;
     private String username;
     private LocalDateTime createdAt;
+    
+    @JsonProperty("messageId")
+    private UUID messageId;
 } 

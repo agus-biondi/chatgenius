@@ -16,17 +16,18 @@ import java.util.UUID;
 @RequestMapping("/api/messages")
 @RequiredArgsConstructor
 public class MessageController {
+
     private final MessageService messageService;
 
     @PostMapping
-    public ResponseEntity<MessageDto> createMessage(
+    public ResponseEntity<Void> createMessage(
         @Valid @RequestBody CreateMessageRequest request,
         @RequestHeader("X-User-ID") String userId
     ) {
         System.out.println("POST /api/messages - Creating message. userId=" + userId + ", request=" + request);
-        MessageDto response = messageService.createMessage(request.getChannelId(), userId, request);
-        System.out.println("POST /api/messages - Message created. response=" + response);
-        return ResponseEntity.ok(response);
+        messageService.createMessage(request.getChannelId(), userId, request);
+        System.out.println("POST /api/messages - Message creation initiated");
+        return ResponseEntity.accepted().build();
     }
 
     @GetMapping("/channel/{channelId}")

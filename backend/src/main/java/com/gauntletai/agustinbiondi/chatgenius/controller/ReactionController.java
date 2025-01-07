@@ -18,15 +18,15 @@ public class ReactionController {
     private final ReactionService reactionService;
 
     @PostMapping
-    public ResponseEntity<ReactionDto> addReaction(
+    public ResponseEntity<Void> addReaction(
         @PathVariable UUID messageId,
         @Valid @RequestBody CreateReactionRequest request,
         @RequestHeader("X-User-ID") String userId
     ) {
         System.out.println("POST /api/messages/" + messageId + "/reactions - Adding reaction. userId=" + userId + ", request=" + request);
-        ReactionDto response = reactionService.addReaction(messageId, userId, request);
-        System.out.println("POST /api/messages/" + messageId + "/reactions - Reaction added. response=" + response);
-        return ResponseEntity.ok(response);
+        reactionService.addReaction(messageId, userId, request);
+        System.out.println("POST /api/messages/" + messageId + "/reactions - Reaction creation initiated");
+        return ResponseEntity.accepted().build();
     }
 
     @DeleteMapping("/{reactionId}")

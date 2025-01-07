@@ -22,7 +22,7 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
 
     const confirmDelete = async () => {
         if (!deletingChannel) return;
-        const expectedCommand = `rm -rf ${deletingChannel.name}`;
+        const expectedCommand = `rm -rf #${deletingChannel.name}`;
         if (deleteConfirmText.toLowerCase() !== expectedCommand.toLowerCase()) {
             setDeleteConfirmText('');
             return;
@@ -57,7 +57,7 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
                                     selectedChannelId === channel.id ? 'bg-[var(--terminal-gray)]' : ''
                                 }`}
                             >
-                                {selectedChannelId === channel.id ? '>' : '-'} {channel.name}
+                                {selectedChannelId === channel.id ? '>' : '-'} #{channel.name}
                             </button>
                             {isAdmin && (
                                 <button
@@ -76,7 +76,7 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
                                 $ Warning: This will permanently delete #{deletingChannel.name}
                             </div>
                             <div className="mt-2 text-[var(--text-secondary)]">
-                                Type 'rm -rf {deletingChannel.name}' to confirm:
+                                Type 'rm -rf #{deletingChannel.name}' to confirm:
                             </div>
                             <div className="mt-2 flex items-center gap-2">
                                 <span className="text-[var(--terminal-dim-green)]">$</span>

@@ -42,6 +42,7 @@ export interface Reaction {
     userId: string;
     username: string;
     createdAt: string;
+    messageId: string | { toString(): string };
 }
 
 export interface File {
@@ -57,8 +58,8 @@ export interface File {
 // Request Types
 export interface CreateChannelRequest {
     name: string;
-    isDirectMessage: boolean;
-    memberIds: string[];
+    isDirectMessage?: boolean;
+    memberIds?: string[];
 }
 
 export interface CreateMessageRequest {

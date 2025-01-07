@@ -3,17 +3,20 @@ import { messageService } from '../../services/messageService';
 
 interface MessageInputProps {
     channelId: string;
-    onMessageSent: () => void;
 }
 
-export function MessageInput({ channelId, onMessageSent }: MessageInputProps) {
+export function MessageInput({ channelId }: MessageInputProps) {
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
-        inputRef.current?.focus();
-    }, [channelId]);
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+    }, [message]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,39 +24,51 @@ export function MessageInput({ channelId, onMessageSent }: MessageInputProps) {
 
         setIsLoading(true);
         try {
-            await messageService.createMessage({ channelId, content: message.trim() });
+            await messageService.createMessage({
+                channelId,
+                content: message.trim()
+            });
             setMessage('');
-            onMessageSent();
         } catch (error) {
             console.error('Failed to send message:', error);
         } finally {
             setIsLoading(false);
-            setTimeout(() => inputRef.current?.focus(), 0);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="p-4 border-t border-[var(--terminal-green)]">
-            <div className="command-prompt">
-                <span className="text-[var(--terminal-dim-green)]">guest@chat-genius</span>
-                <span className="text-[var(--terminal-dim-green)]">:~$</span>
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type your message..."
-                    className="flex-1 bg-transparent border-none outline-none placeholder-[var(--text-secondary)] ml-2 cursor"
-                    disabled={isLoading}
-                />
-                <button
-                    type="submit"
-                    className="terminal-button"
-                    disabled={isLoading || !message.trim()}
-                >
-                    {isLoading ? 'SENDING...' : 'SEND'}
-                </button>
-            </div>
-        </form>
+        <div className="border-t border-[var(--terminal-green)]">
+            <form onSubmit={handleSubmit} className="p-4">
+                <div className="flex items-start gap-2">
+                    <span className="text-[var(--terminal-dim-green)] mt-1.5">$</span>
+                    <div className="flex-1">
+                        <textarea
+                            ref={textareaRef}
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Type your message... (Shift+Enter for new line)"
+                            className="w-full bg-transparent border-none outline-none resize-none text-[var(--text-primary)] placeholder-[var(--text-secondary)] min-h-[24px]"
+                            disabled={isLoading}
+                            rows={1}
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        className="px-4 py-2 border border-[var(--terminal-green)] hover:bg-[var(--terminal-gray)] transition-colors disabled:opacity-50"
+                        disabled={isLoading || !message.trim()}
+                    >
+                        [ENTER]
+                    </button>
+                </div>
+            </form>
+        </div>
     );
 } 
