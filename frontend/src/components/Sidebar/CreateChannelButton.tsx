@@ -40,7 +40,7 @@ export function CreateChannelButton({ onChannelCreated }: CreateChannelButtonPro
     };
 
     return (
-        <div className="p-4 border-t border-[var(--terminal-green)]">
+        <div className="p-4 border-t border-[var(--terminal-green)] bg-[var(--terminal-black)]">
             <button
                 onClick={() => setIsModalOpen(true)}
                 className="w-full p-2 border border-[var(--terminal-green)] hover:bg-[var(--terminal-gray)] transition-colors"
@@ -49,7 +49,7 @@ export function CreateChannelButton({ onChannelCreated }: CreateChannelButtonPro
             </button>
 
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
                     <div className="bg-[var(--terminal-black)] border border-[var(--terminal-green)] p-6 w-96">
                         <h3 className="text-lg font-semibold mb-4">$ mkdir channel/</h3>
                         <form onSubmit={handleSubmit}>

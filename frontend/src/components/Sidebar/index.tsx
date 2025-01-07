@@ -38,7 +38,7 @@ export function Sidebar({ channels, selectedChannelId, onSelectChannel, currentU
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex-none">
+            <div className="flex-none bg-[var(--terminal-black)]">
                 <ChannelList
                     channels={channels}
                     selectedChannelId={selectedChannelId}
