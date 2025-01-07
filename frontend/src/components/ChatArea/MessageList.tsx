@@ -90,7 +90,7 @@ export function MessageList({ messages, channel }: MessageListProps) {
                             <div key={message.id} className="message group">
                                 <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm">
                                     <span className="font-medium flex items-center">
-                                        <span className="text-[var(--text-primary)]">{message.createdByUsername}</span>
+                                        <span className="text-[var(--terminal-green)] font-bold">{message.createdByUsername}</span>
                                         <span className="text-[#c17b85]">@electrochat-9000</span>
                                         <span className="text-[#7b95c1]">#{channel?.name || 'unknown'}</span>
                                     </span>
@@ -150,7 +150,7 @@ export function MessageList({ messages, channel }: MessageListProps) {
                                         )}
                                     </div>
                                 </div>
-                                <div className="mt-1 text-[var(--text-primary)]">
+                                <div className="text-[var(--text-primary)] opacity-80 pl-4">
                                     {message.content.split('\n').map((line, i) => (
                                         <div key={i}>{line || '\u00A0'}</div>
                                     ))}

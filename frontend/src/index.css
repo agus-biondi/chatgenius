@@ -163,6 +163,7 @@ body {
   content: '>';
   position: absolute;
   left: 0;
+  top: 0.25rem;
   color: var(--terminal-dim-green);
 }
 
