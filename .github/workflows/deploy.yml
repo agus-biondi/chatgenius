@@ -10,6 +10,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    # Install Heroku CLI
+    - name: Install Heroku CLI
+      run: |
+        curl https://cli-assets.heroku.com/install.sh | sh
+        
     # Deploy Backend
     - name: Deploy Backend to Heroku
       uses: akhileshns/heroku-deploy@v3.12.14
