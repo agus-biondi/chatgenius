@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { channelService } from '../../services/channelService';
 
 interface CreateChannelButtonProps {
@@ -9,14 +9,6 @@ export function CreateChannelButton({ onChannelCreated }: CreateChannelButtonPro
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [channelName, setChannelName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        if (isModalOpen) {
-            // Focus the input when modal opens
-            inputRef.current?.focus();
-        }
-    }, [isModalOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,7 +32,7 @@ export function CreateChannelButton({ onChannelCreated }: CreateChannelButtonPro
     };
 
     return (
-        <div className="p-4 border-t border-[var(--terminal-green)] bg-[var(--terminal-black)]">
+        <div className="p-4 border-t border-[var(--terminal-green)]">
             <button
                 onClick={() => setIsModalOpen(true)}
                 className="w-full p-2 border border-[var(--terminal-green)] hover:bg-[var(--terminal-gray)] transition-colors"
@@ -49,12 +41,11 @@ export function CreateChannelButton({ onChannelCreated }: CreateChannelButtonPro
             </button>
 
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center">
                     <div className="bg-[var(--terminal-black)] border border-[var(--terminal-green)] p-6 w-96">
                         <h3 className="text-lg font-semibold mb-4">$ mkdir channel/</h3>
                         <form onSubmit={handleSubmit}>
                             <input
-                                ref={inputRef}
                                 type="text"
                                 value={channelName}
                                 onChange={(e) => setChannelName(e.target.value)}

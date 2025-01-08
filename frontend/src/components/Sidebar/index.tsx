@@ -37,19 +37,15 @@ export function Sidebar({ channels, selectedChannelId, onSelectChannel, currentU
     };
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex-none bg-[var(--terminal-black)]">
-                <ChannelList
-                    channels={channels}
-                    selectedChannelId={selectedChannelId}
-                    onSelectChannel={onSelectChannel}
-                    currentUser={currentUser}
-                />
-                <CreateChannelButton onChannelCreated={handleChannelCreated} />
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
-                <UserList users={users} />
-            </div>
+        <div className="flex flex-col h-full border-r border-[var(--terminal-dim-green)]">
+            <ChannelList
+                channels={channels}
+                selectedChannelId={selectedChannelId}
+                onSelectChannel={onSelectChannel}
+                currentUser={currentUser}
+            />
+            <CreateChannelButton onChannelCreated={handleChannelCreated} />
+            <UserList users={users} />
         </div>
     );
 } 
