@@ -2,6 +2,7 @@ package com.gauntletai.agustinbiondi.chatgenius.service;
 
 import com.gauntletai.agustinbiondi.chatgenius.dto.CreateReactionRequest;
 import com.gauntletai.agustinbiondi.chatgenius.dto.ReactionDto;
+import com.gauntletai.agustinbiondi.chatgenius.dto.NotificationDto;
 import com.gauntletai.agustinbiondi.chatgenius.model.Message;
 import com.gauntletai.agustinbiondi.chatgenius.model.Reaction;
 import com.gauntletai.agustinbiondi.chatgenius.model.User;
@@ -18,10 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import com.gauntletai.agustinbiondi.chatgenius.dto.WebSocketEventDto;
+import com.gauntletai.agustinbiondi.chatgenius.dto.WebSocketEventDto.EventType;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -67,29 +72,35 @@ public class ReactionService {
         log.debug("Saved reaction: {}", savedReaction);
         log.debug("Saved reaction's message ID: {}", savedReaction.getMessage().getId());
         
-        // Create DTO using the saved reaction and original message
+        // Create DTO for WebSocket
         ReactionDto reactionDto = toDto(savedReaction);
-        log.info("MessageId after toDto: {}", reactionDto.getMessageId());
         
-        // Double-check messageId is set
-        if (reactionDto.getMessageId() == null) {
-            log.info("MessageId was null, setting it explicitly");
-            reactionDto.setMessageId(messageId);
-        }
+        // Send full reaction data to channel subscribers
+        String channelTopic = "/topic/channel/" + message.getChannel().getId();
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("reaction", reactionDto);
         
-        String destination = "/topic/channel/" + message.getChannel().getId();
-        log.info("Reaction DTO to be sent: id={}, emoji={}, userId={}, username={}, messageId={}, createdAt={}", 
-            reactionDto.getId(),
-            reactionDto.getEmoji(),
-            reactionDto.getUserId(),
-            reactionDto.getUsername(),
-            reactionDto.getMessageId(),
-            reactionDto.getCreatedAt()
-        );
-        log.info("Full Reaction DTO: {}", reactionDto);
-        log.debug("Publishing reaction to WebSocket topic: {}", destination);
-        messagingTemplate.convertAndSend(destination, reactionDto);
-        log.debug("Successfully published reaction to WebSocket");
+        WebSocketEventDto event = WebSocketEventDto.builder()
+            .type(EventType.REACTION_ADD)
+            .channelId(message.getChannel().getId())
+            .messageId(messageId)
+            .entityId(savedReaction.getId())
+            .userId(userId)
+            .timestamp(savedReaction.getCreatedAt())
+            .payload(payload)
+            .build();
+            
+        messagingTemplate.convertAndSend(channelTopic, event);
+
+        // Send light notification to all users
+        WebSocketEventDto notification = WebSocketEventDto.builder()
+            .type(EventType.NOTIFICATION)
+            .channelId(message.getChannel().getId())
+            .messageId(messageId)
+            .userId(userId)
+            .timestamp(savedReaction.getCreatedAt())
+            .build();
+        messagingTemplate.convertAndSend("/topic/notifications", notification);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -115,7 +126,26 @@ public class ReactionService {
             throw new AccessDeniedException("Only reaction creator can remove it");
         }
 
+        // Create event before deletion
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("emoji", reaction.getEmoji());
+        
+        WebSocketEventDto event = WebSocketEventDto.builder()
+            .type(EventType.REACTION_REMOVE)
+            .channelId(reaction.getMessage().getChannel().getId())
+            .messageId(messageId)
+            .entityId(reactionId)
+            .userId(userId)
+            .timestamp(LocalDateTime.now())
+            .payload(payload)
+            .build();
+
+        // Delete the reaction
         reactionRepository.delete(reaction);
+
+        // Send deletion notification to channel subscribers
+        String channelTopic = "/topic/channel/" + reaction.getMessage().getChannel().getId();
+        messagingTemplate.convertAndSend(channelTopic, event);
     }
 
     public ReactionDto toDto(Reaction reaction) {

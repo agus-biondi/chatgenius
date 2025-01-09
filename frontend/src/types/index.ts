@@ -76,4 +76,28 @@ export interface CreateUserRequest {
     userId: string;
     username: string;
     email: string;
+}
+
+export type WebSocketEventType =
+    | 'MESSAGE_NEW'
+    | 'MESSAGE_EDIT'
+    | 'MESSAGE_DELETE'
+    | 'REACTION_ADD'
+    | 'REACTION_REMOVE'
+    | 'CHANNEL_UPDATE'
+    | 'NOTIFICATION';
+
+export interface WebSocketEvent {
+    type: WebSocketEventType;
+    channelId: string;
+    messageId: string;
+    entityId?: string;  // reactionId, userId, etc.
+    userId: string;
+    timestamp: string;
+    payload?: {
+        message?: Message;
+        reaction?: Reaction;
+        emoji?: string;
+        [key: string]: any;
+    };
 } 

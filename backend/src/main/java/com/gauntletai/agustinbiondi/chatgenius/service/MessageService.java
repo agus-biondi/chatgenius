@@ -2,6 +2,8 @@ package com.gauntletai.agustinbiondi.chatgenius.service;
 
 import com.gauntletai.agustinbiondi.chatgenius.dto.CreateMessageRequest;
 import com.gauntletai.agustinbiondi.chatgenius.dto.MessageDto;
+import com.gauntletai.agustinbiondi.chatgenius.dto.WebSocketEventDto;
+import com.gauntletai.agustinbiondi.chatgenius.dto.WebSocketEventDto.EventType;
 import com.gauntletai.agustinbiondi.chatgenius.model.Channel;
 import com.gauntletai.agustinbiondi.chatgenius.model.Message;
 import com.gauntletai.agustinbiondi.chatgenius.model.User;
@@ -23,6 +25,9 @@ import org.springframework.transaction.annotation.Propagation;
 
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -64,11 +69,34 @@ public class MessageService {
         Message refreshedMessage = messageRepository.findById(savedMessage.getId())
             .orElseThrow(() -> new EntityNotFoundException("Message not found after save"));
         
-        // Send WebSocket notification
+        // Create event for WebSocket
         MessageDto messageDto = toDto(refreshedMessage);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("message", messageDto);
+
+        WebSocketEventDto event = WebSocketEventDto.builder()
+            .type(EventType.MESSAGE_NEW)
+            .channelId(channelId)
+            .messageId(refreshedMessage.getId())
+            .userId(userId)
+            .timestamp(refreshedMessage.getCreatedAt())
+            .payload(payload)
+            .build();
+
+        // Send WebSocket notification
         String destination = "/topic/channel/" + channelId;
-        log.info("Publishing message to WebSocket topic: {}", destination);
-        messagingTemplate.convertAndSend(destination, messageDto);
+        log.info("Publishing message event to WebSocket topic: {}", destination);
+        messagingTemplate.convertAndSend(destination, event);
+
+        // Send light notification for other channels
+        WebSocketEventDto notification = WebSocketEventDto.builder()
+            .type(EventType.NOTIFICATION)
+            .channelId(channelId)
+            .messageId(refreshedMessage.getId())
+            .userId(userId)
+            .timestamp(refreshedMessage.getCreatedAt())
+            .build();
+        messagingTemplate.convertAndSend("/topic/notifications", notification);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -123,7 +151,21 @@ public class MessageService {
             throw new AccessDeniedException("Not authorized to delete this message");
         }
 
+        // Create event before deletion
+        WebSocketEventDto event = WebSocketEventDto.builder()
+            .type(EventType.MESSAGE_DELETE)
+            .channelId(message.getChannel().getId())
+            .messageId(messageId)
+            .userId(userId)
+            .timestamp(LocalDateTime.now())
+            .build();
+
+        // Delete the message
         messageRepository.delete(message);
+
+        // Send WebSocket notification
+        String destination = "/topic/channel/" + message.getChannel().getId();
+        messagingTemplate.convertAndSend(destination, event);
     }
 
     @Transactional(readOnly = true)
@@ -150,7 +192,25 @@ public class MessageService {
         }
 
         message.setContent(request.getContent());
-        return toDto(messageRepository.save(message));
+        Message updatedMessage = messageRepository.save(message);
+        MessageDto messageDto = toDto(updatedMessage);
+        
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("message", messageDto);
+
+        WebSocketEventDto event = WebSocketEventDto.builder()
+            .type(EventType.MESSAGE_EDIT)
+            .channelId(message.getChannel().getId())
+            .messageId(messageId)
+            .userId(userId)
+            .timestamp(LocalDateTime.now())
+            .payload(payload)
+            .build();
+
+        String destination = "/topic/channel/" + message.getChannel().getId();
+        messagingTemplate.convertAndSend(destination, event);
+
+        return messageDto;
     }
 
     private MessageDto toDto(Message message) {

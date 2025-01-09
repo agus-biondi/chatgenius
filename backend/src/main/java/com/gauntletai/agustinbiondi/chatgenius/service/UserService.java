@@ -4,6 +4,7 @@ import com.gauntletai.agustinbiondi.chatgenius.model.User;
 import com.gauntletai.agustinbiondi.chatgenius.model.UserRole;
 import com.gauntletai.agustinbiondi.chatgenius.repository.UserRepository;
 import com.gauntletai.agustinbiondi.chatgenius.dto.UserDto;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -20,20 +21,19 @@ public class UserService {
     @Transactional(readOnly = true)
     public List<UserDto> getActiveUsers() {
         return userRepository.findAll().stream()
-            .map(user -> {
-                UserDto dto = new UserDto();
-                dto.setUserId(user.getUserId());
-                dto.setUsername(user.getUsername());
-                dto.setEmail(user.getEmail());
-                dto.setRole(user.getRole());
-                dto.setCreatedAt(user.getCreatedAt());
-                return dto;
-            })
+            .map(this::toDto)
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public UserDto getUserById(String userId) {
+        return userRepository.findByUserId(userId)
+            .map(this::toDto)
+            .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+    }
+
     @Transactional
-    public void createUser(String userId, String email, String username) {
+    public UserDto createUser(String userId, String email, String username) {
         // First check if user exists to provide a clear error message
         if (userRepository.findByUserId(userId).isPresent()) {
             throw new IllegalStateException("User already exists with ID: " + userId);
@@ -45,21 +45,39 @@ public class UserService {
         user.setEmail(email);
         user.setUsername(username);
         user.setRole(UserRole.USER);
-        userRepository.save(user);
+        user = userRepository.save(user);
+        return toDto(user);
+    }
+
+    private UserDto toDto(User user) {
+        UserDto dto = new UserDto();
+        dto.setUserId(user.getUserId());
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setRole(user.getRole());
+        dto.setCreatedAt(user.getCreatedAt());
+        return dto;
     }
 
     @Transactional
     public void updateUser(String userId, String email, String username) {
-        userRepository.findByUserId(userId).ifPresent(user -> {
+        User user = userRepository.findByUserId(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+        
+        if (email != null) {
             user.setEmail(email);
+        }
+        if (username != null) {
             user.setUsername(username);
-            userRepository.save(user);
-        });
+        }
+        userRepository.save(user);
     }
 
     @Transactional
     public void deleteUser(String userId) {
-        userRepository.deleteById(userId);
+        User user = userRepository.findByUserId(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+        userRepository.delete(user);
     }
 
     @Transactional(readOnly = true)
@@ -69,6 +87,6 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public boolean emailExists(String email) {
-        return userRepository.existsByEmail(email);
+        return userRepository.findByEmail(email).isPresent();
     }
 } 

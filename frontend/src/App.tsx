@@ -8,9 +8,9 @@ function AuthLayout() {
     
     return (
         <div className="relative flex flex-col h-screen items-center justify-center gap-4">
-            <h1 className="text-3xl font-bold text-[var(--terminal-green)]">ELECTRO_CHAT_9000</h1>
-            <div className="p-4 border border-[var(--terminal-green)] bg-[var(--terminal-black)]">
-                <h2 className="text-xl mb-4 text-[var(--terminal-green)]">
+            <h1 className="text-3xl font-bold text-[#6edb71]">ELECTRO_CHAT_9000</h1>
+            <div className="p-4 border border-[#6edb71] bg-[var(--terminal-black)]">
+                <h2 className="text-xl mb-4 text-[#6edb71]">
                     {isSignIn ? "Sign In" : "Sign Up"}
                 </h2>
                 {isSignIn ? <SignIn /> : <SignUp />}

@@ -1,5 +1,5 @@
 import { Client } from '@stomp/stompjs';
-import { Message, Reaction } from '../types';
+import { WebSocketEvent } from '../types';
 
 // Convert HTTP URL to WebSocket URL
 const getWebSocketUrl = () => {
@@ -11,10 +11,10 @@ const getWebSocketUrl = () => {
 
 class WebSocketService {
     private client: Client | null = null;
-    private messageHandlers: Map<string, (message: Message | Reaction) => void> = new Map();
-    private subscriptions: Map<string, any[]> = new Map();
+    private messageHandlers: Map<string, (event: WebSocketEvent) => void> = new Map();
+    private subscriptions: Map<string, any> = new Map();
     private isConnected: boolean = false;
-    private pendingSubscriptions: Map<string, (message: Message | Reaction) => void> = new Map();
+    private pendingSubscriptions: Map<string, (event: WebSocketEvent) => void> = new Map();
 
     initialize() {
         if (this.client) {
@@ -61,10 +61,10 @@ class WebSocketService {
         this.pendingSubscriptions.clear();
     }
 
-    subscribeToChannel(channelId: string, onMessage: (message: Message | Reaction) => void) {
+    subscribeToChannel(channelId: string, onEvent: (event: WebSocketEvent) => void) {
         if (!this.client || !this.isConnected) {
             console.log('WebSocket not connected, queueing subscription for channel:', channelId);
-            this.pendingSubscriptions.set(channelId, onMessage);
+            this.pendingSubscriptions.set(channelId, onEvent);
             return;
         }
 
@@ -73,35 +73,25 @@ class WebSocketService {
         // Clean up existing subscriptions for this channel
         this.unsubscribeFromChannel(channelId);
 
-        this.messageHandlers.set(channelId, onMessage);
+        this.messageHandlers.set(channelId, onEvent);
         
-        // Subscribe to both messages and reactions for the channel
-        const messageSubscription = this.client.subscribe(`/topic/channel/${channelId}`, (message) => {
-            console.log('Received WebSocket message for channel:', channelId);
-            console.debug('Message body:', message.body);
-            const messageData = JSON.parse(message.body) as Message;
-            onMessage(messageData);
-        });
-
-        const reactionSubscription = this.client.subscribe(`/topic/channel/${channelId}/reactions`, (message) => {
-            console.log('Received WebSocket reaction for channel:', channelId);
-            console.debug('Raw reaction body:', message.body);
+        // Subscribe to channel events
+        const subscription = this.client.subscribe(`/topic/channel/${channelId}`, (message) => {
+            console.log('Received WebSocket event for channel:', channelId);
+            console.debug('Event body:', message.body);
             try {
-                const reactionData = JSON.parse(message.body) as Reaction;
-                console.debug('Parsed reaction data:', reactionData);
-                console.debug('Reaction fields:', Object.keys(reactionData));
-                console.debug('Reaction messageId:', reactionData.messageId);
-                onMessage(reactionData);
+                const event = JSON.parse(message.body) as WebSocketEvent;
+                onEvent(event);
             } catch (error) {
-                console.error('Error parsing reaction data:', error);
+                console.error('Error parsing WebSocket event:', error);
                 console.error('Raw message body:', message.body);
             }
         });
 
-        console.log('Successfully subscribed to channel topics:', channelId);
+        console.log('Successfully subscribed to channel:', channelId);
 
-        // Store the subscriptions for cleanup
-        this.subscriptions.set(channelId, [messageSubscription, reactionSubscription]);
+        // Store the subscription for cleanup
+        this.subscriptions.set(channelId, subscription);
     }
 
     unsubscribeFromChannel(channelId: string) {
@@ -109,10 +99,7 @@ class WebSocketService {
         const existingSubscriptions = this.subscriptions.get(channelId);
         if (existingSubscriptions) {
             console.log('Unsubscribing from channel:', channelId);
-            existingSubscriptions.forEach(subscription => {
-                console.log('Unsubscribing from subscription:', subscription.id);
-                subscription.unsubscribe();
-            });
+            existingSubscriptions.unsubscribe();
             this.subscriptions.delete(channelId);
             console.log('Successfully unsubscribed from channel:', channelId);
         }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Message, Reaction, Channel } from '../../types';
+import { Message, Reaction, Channel, WebSocketEvent } from '../../types';
 import { messageService } from '../../services/messageService';
 import { websocketService } from '../../services/websocketService';
 import { channelService } from '../../services/channelService';
@@ -15,72 +15,92 @@ export function ChatPanel({ channelId }: ChatPanelProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [channel, setChannel] = useState<Channel | null>(null);
 
-    const handleWebSocketUpdate = (data: Message | Reaction) => {
-        console.log('Received WebSocket update:', data);
-        console.log('WebSocket update type:', 'content' in data ? 'Message' : 'Reaction');
-        console.log('WebSocket update fields:', Object.keys(data));
-        
-        if ('content' in data) {
-            // It's a Message
-            console.log('Handling new message:', data);
-            handleNewMessage(data);
-        } else {
-            // It's a Reaction
-            console.log('Handling new reaction:', data);
-            // Convert UUID to string if needed
-            const reaction: Reaction = {
-                ...data,
-                messageId: data.messageId?.toString() || ''
-            };
-            handleNewReaction(reaction);
+    const handleWebSocketUpdate = (data: WebSocketEvent) => {
+        console.log('Received WebSocket event:', data);
+
+        // Only process events for current channel
+        if (data.channelId !== channelId) {
+            // Handle notifications for other channels here if needed
+            if (data.type === 'NOTIFICATION') {
+                // TODO: Update unread indicators, etc.
+                return;
+            }
+            return;
+        }
+
+        switch (data.type) {
+            case 'MESSAGE_NEW':
+                if (data.payload?.message) {
+                    handleNewMessage(data.payload.message);
+                }
+                break;
+
+            case 'MESSAGE_EDIT':
+                if (data.payload?.message) {
+                    setMessages(prev => prev.map(msg => 
+                        msg.id === data.messageId ? data.payload!.message! : msg
+                    ));
+                }
+                break;
+
+            case 'MESSAGE_DELETE':
+                setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+                break;
+
+            case 'REACTION_ADD':
+                if (data.payload?.reaction) {
+                    handleNewReaction(data.payload.reaction);
+                }
+                break;
+
+            case 'REACTION_REMOVE':
+                handleRemovedReaction(data.messageId, data.entityId!, data.payload?.emoji);
+                break;
+
+            default:
+                console.warn('Unknown WebSocket event type:', data.type);
         }
     };
 
     const handleNewMessage = (message: Message) => {
-        console.log('Processing new message:', message);
         setMessages(prev => {
             // Check if message already exists
             if (prev.some(m => m.id === message.id)) {
-                console.log('Message already exists, skipping:', message.id);
                 return prev;
             }
             // Sort messages by creation date, oldest first
-            const newMessages = [...prev, message].sort((a, b) => 
+            return [...prev, message].sort((a, b) => 
                 new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
             );
-            console.log('Updated messages:', newMessages);
-            return newMessages;
         });
     };
 
     const handleNewReaction = (reaction: Reaction) => {
-        console.log('Processing new reaction:', reaction);
-        const messageIdStr = reaction.messageId?.toString() || '';
-        console.log('Reaction messageId:', messageIdStr);
-        
-        setMessages(prev => {
-            console.log('Current messages:', prev);
-            return prev.map(message => {
-                // Find the message that this reaction belongs to
-                if (message.id === messageIdStr) {
-                    console.log('Found message for reaction:', message.id);
-                    console.log('Current message reactions:', message.reactions);
-                    // Add the new reaction or update existing reactions
-                    const updatedReactions = [...message.reactions];
-                    const existingIndex = updatedReactions.findIndex(r => r.id === reaction.id);
-                    if (existingIndex >= 0) {
-                        console.log('Updating existing reaction at index:', existingIndex);
-                        updatedReactions[existingIndex] = reaction;
-                    } else {
-                        console.log('Adding new reaction');
-                        updatedReactions.push(reaction);
-                    }
-                    console.log('Updated reactions:', updatedReactions);
-                    return { ...message, reactions: updatedReactions };
+        setMessages(prev => prev.map(message => {
+            if (message.id === reaction.messageId) {
+                const updatedReactions = [...message.reactions];
+                const existingIndex = updatedReactions.findIndex(r => r.id === reaction.id);
+                if (existingIndex >= 0) {
+                    updatedReactions[existingIndex] = reaction;
+                } else {
+                    updatedReactions.push(reaction);
                 }
-                return message;
-            });
-        });
+                return { ...message, reactions: updatedReactions };
+            }
+            return message;
+        }));
+    };
+
+    const handleRemovedReaction = (messageId: string, reactionId: string, emoji?: string) => {
+        setMessages(prev => prev.map(message => {
+            if (message.id === messageId) {
+                return {
+                    ...message,
+                    reactions: message.reactions.filter(r => r.id !== reactionId)
+                };
+            }
+            return message;
+        }));
     };
 
     const fetchMessages = async () => {
@@ -159,7 +179,12 @@ export function ChatPanel({ channelId }: ChatPanelProps) {
             ) : (
                 <>
                     <MessageList messages={messages} channel={channel} />
-                    <MessageInput channelId={channelId} />
+                    {channel && (
+                        <MessageInput 
+                            channelId={channel.id} 
+                            channelName={channel.name}
+                        />
+                    )}
                 </>
             )}
         </div>

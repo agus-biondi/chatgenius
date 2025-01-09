@@ -3,9 +3,10 @@ import { messageService } from '../../services/messageService';
 
 interface MessageInputProps {
     channelId: string;
+    channelName: string;
 }
 
-export function MessageInput({ channelId }: MessageInputProps) {
+export function MessageInput({ channelId, channelName }: MessageInputProps) {
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -54,30 +55,42 @@ export function MessageInput({ channelId }: MessageInputProps) {
     }, [channelId]);
 
     return (
-        <div className="border-t border-[var(--terminal-green)]">
+        <div className="border-t border-[#6edb71]">
             <form onSubmit={handleSubmit} className="p-4">
-                <div className="flex items-start gap-2">
-                    <span className="text-[var(--terminal-dim-green)] mt-1.5">$</span>
-                    <div className="flex-1">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[#6edb71]">$</span>
+                        <span className="text-[#b8cceb]">echo</span>
                         <textarea
                             ref={textareaRef}
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Type your message... (Shift+Enter for new line)"
-                            className="w-full bg-transparent border-none outline-none resize-none text-[var(--text-primary)] placeholder-[var(--text-secondary)] min-h-[24px]"
+                            placeholder="# Write message to append to channel"
+                            className="flex-1 p-2 bg-[var(--terminal-gray)] text-[#b8cceb] placeholder-[#9ba8b9] outline-none border border-transparent focus:border-[#6edb71] transition-colors resize-none min-h-[24px] leading-6"
                             disabled={isLoading}
                             rows={1}
                         />
                     </div>
-                    <button
-                        type="submit"
-                        className="px-4 py-2 border border-[var(--terminal-green)] hover:bg-[var(--terminal-gray)] transition-colors disabled:opacity-50"
-                        disabled={isLoading || !message.trim()}
-                    >
-                        [ENTER]
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[#6edb71]">$</span>
+                        <span className="text-[#b8cceb]">{'>> ./channels/'}<span className="text-[#6edb71]">{channelName}</span>{'/messages.log'}</span>
+                        <div className="flex-1"></div>
+                        <button
+                            type="submit"
+                            className="text-[#9ba8b9] hover:text-[#6edb71] transition-colors disabled:opacity-50"
+                            disabled={isLoading || !message.trim()}
+                        >
+                            {isLoading ? '[wait]' : '[enter]'}
+                        </button>
+                    </div>
                 </div>
+                {/* Future options will go here */}
+                {/* <div className="flex items-center gap-2 mt-2 pl-8">
+                    <button type="button" className="text-[#9ba8b9] hover:text-[#6edb71]">
+                        [--attach-file]
+                    </button>
+                </div> */}
             </form>
         </div>
     );

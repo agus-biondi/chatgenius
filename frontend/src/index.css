@@ -7,18 +7,18 @@
 :root {
   /* Core colors */
   --terminal-black: #1a1b1e;
-  --terminal-green: #4AF626;
-  --terminal-dim-green: #2A9D1C;
+  --terminal-green: #6edb71;
+  --terminal-dim-green: #6edb71;
   --terminal-gray: #2a2b2e;
   
   /* Accent colors */
-  --terminal-blue: #0A84FF;
-  --terminal-orange: #FF9500;
+  --terminal-blue: #6e8adb;
+  --terminal-orange: #db6e7a;
   
   /* Text colors */
-  --text-primary: var(--terminal-green);
-  --text-secondary: #6B7280;
-  --text-accent: var(--terminal-blue);
+  --text-primary: #b8cceb;
+  --text-secondary: #9ba8b9;
+  --text-accent: #6e8adb;
 
   /* CRT effects */
   --scanline-size: 2px;
@@ -117,8 +117,8 @@ body {
 
 /* Terminal window styles */
 .terminal-window {
-  border: 1px solid var(--terminal-green);
-  box-shadow: 0 0 10px rgba(74, 246, 38, 0.1);
+  border: 1px solid #6edb71;
+  box-shadow: 0 0 10px rgba(110, 219, 113, 0.1);
   backdrop-filter: blur(5px);
 }
 
@@ -131,20 +131,20 @@ body {
 
 .command-prompt::before {
   content: '$';
-  color: var(--terminal-dim-green);
+  color: #6edb71;
 }
 
 /* Button styles */
 .terminal-button {
-  border: 1px solid var(--terminal-green);
+  border: 1px solid #6edb71;
   background: transparent;
-  color: var(--terminal-green);
+  color: #b8cceb;
   padding: 0.5rem 1rem;
   transition: all 0.2s ease;
 }
 
 .terminal-button:hover:not(:disabled) {
-  background: var(--terminal-green);
+  background: #6edb71;
   color: var(--terminal-black);
 }
 
@@ -164,14 +164,14 @@ body {
   position: absolute;
   left: 0;
   top: 0.25rem;
-  color: var(--terminal-dim-green);
+  color: #6edb71;
 }
 
 /* Circuit board background pattern */
 .circuit-pattern {
   background-image: 
-    radial-gradient(var(--terminal-dim-green) 1px, transparent 1px),
-    radial-gradient(var(--terminal-dim-green) 1px, transparent 1px);
+    radial-gradient(#6edb71 1px, transparent 1px),
+    radial-gradient(#6edb71 1px, transparent 1px);
   background-size: 20px 20px;
   background-position: 0 0, 10px 10px;
   opacity: 0.05;

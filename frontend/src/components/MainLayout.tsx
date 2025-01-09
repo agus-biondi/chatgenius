@@ -59,7 +59,11 @@ export function MainLayout() {
                     channels={channels}
                     selectedChannelId={selectedChannelId}
                     onSelectChannel={setSelectedChannelId}
-                    currentUser={{ role: user?.publicMetadata?.role as string || 'USER' }}
+                    currentUser={{ 
+                        role: user?.unsafeMetadata?.role as string || 'USER',
+                        id: user?.id || '',
+                        username: user?.username || user?.emailAddresses[0]?.emailAddress || 'Anonymous'
+                    }}
                     isLoading={isLoading}
                     onChannelCreated={fetchChannels}
                 />
