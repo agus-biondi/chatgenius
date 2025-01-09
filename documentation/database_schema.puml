@@ -31,6 +31,8 @@ table(channel_memberships) {
     foreign_key(channel_id): UUID
     foreign_key(user_id): VARCHAR(255)
     joined_at: TIMESTAMP
+    --
+    unique(channel_id, user_id)
 }
 
 table(messages) {

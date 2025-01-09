@@ -12,7 +12,7 @@ package "App Structure" {
     [App] as app
     [ProtectedRoute] as protectedRoute
     [AuthLayout] as authLayout
-    [ChatLayout] as chatLayout
+    [MainLayout] as mainLayout
 }
 
 package "Authentication" {
@@ -22,19 +22,29 @@ package "Authentication" {
     [ClerkProvider] as clerkProvider
 }
 
-package "Chat Components" {
-    package "Sidebar" {
-        [ChannelList] as channelList
-        [CreateChannelButton] as createChannel
-        [UserList] as userList
+package "Main Components" {
+    package "Left Panel" {
+        package "Sidebar" {
+            [Sidebar] as sidebar
+            [ChannelList] as channelList
+            [CreateChannelButton] as createChannel
+            [UserList] as userList
+        }
     }
     
-    package "ChatArea" {
-        [Navbar] as navbar
-        [MessageList] as messageList
-        [MessageInput] as messageInput
-        [EmojiPicker] as emojiPicker
-        [ReactionGroup] as reactionGroup
+    package "Right Panel" {
+        package "Navbar" {
+            [Navbar] as navbar
+            [SignOutButton] as signOutButton
+        }
+
+        package "ChatPanel" {
+            [ChatPanel] as chatPanel
+            [MessageList] as messageList
+            [MessageInput] as messageInput
+            [EmojiPicker] as emojiPicker
+            [ReactionGroup] as reactionGroup
+        }
     }
 }
 
@@ -49,7 +59,7 @@ package "Services" {
 ' Main Structure
 clerkProvider --> app
 app --> protectedRoute
-protectedRoute --> chatLayout
+protectedRoute --> mainLayout
 app --> authLayout
 
 ' Auth Flow
@@ -57,50 +67,50 @@ authLayout --> signIn
 authLayout --> signUp
 authLayout --> signedOut
 
-' Chat Layout Structure
-chatLayout --> channelList
-chatLayout --> messageList
-chatLayout --> navbar
+' Main Layout Structure
+mainLayout --> sidebar
+mainLayout --> navbar
+mainLayout --> chatPanel
 
 ' Sidebar Components
-channelList --> createChannel
-channelList --> userList
+sidebar --> channelList
+sidebar --> createChannel
+sidebar --> userList
 
-' Chat Area Components
-messageList --> messageInput
+' Chat Panel Components
+chatPanel --> messageList
+chatPanel --> messageInput
 messageList --> emojiPicker
 messageList --> reactionGroup
 
+' Navbar Components
+navbar --> signOutButton
+
 ' Service Dependencies
-chatLayout ..> channelSvc
-chatLayout ..> wsSvc
-chatLayout ..> userSvc
-messageList ..> messageSvc
+mainLayout ..> channelSvc
+mainLayout ..> wsSvc
+mainLayout ..> userSvc
+chatPanel ..> messageSvc
 messageList ..> reactionSvc
-channelList ..> channelSvc
-userList ..> userSvc
+sidebar ..> channelSvc
 
-note right of app
-  Main application container
-  Handles routing and layout switching
+note right of mainLayout
+  Main layout container
+  Split into left sidebar and right content area
+  Manages global state and WebSocket
 end note
 
-note right of chatLayout
-  Main chat interface
-  Manages WebSocket connection
-  Handles real-time updates
+note right of sidebar
+  Left panel component
+  Manages channel list
+  Handles user list
+  Channel creation
 end note
 
-note right of messageList
-  Displays messages
-  Handles reactions
-  Supports threading
-end note
-
-note right of wsSvc
-  WebSocket connection
-  Real-time message delivery
-  Channel updates
+note right of "Right Panel"
+  Right content area
+  Navbar at top
+  Chat panel fills remaining space
 end note
 
 @enduml 

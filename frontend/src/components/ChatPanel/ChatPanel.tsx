@@ -5,13 +5,12 @@ import { websocketService } from '../../services/websocketService';
 import { channelService } from '../../services/channelService';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
-import { Navbar } from './Navbar';
 
-interface ChatAreaProps {
+interface ChatPanelProps {
     channelId: string | null;
 }
 
-export function ChatArea({ channelId }: ChatAreaProps) {
+export function ChatPanel({ channelId }: ChatPanelProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [channel, setChannel] = useState<Channel | null>(null);
@@ -159,7 +158,6 @@ export function ChatArea({ channelId }: ChatAreaProps) {
                 </div>
             ) : (
                 <>
-                    <Navbar />
                     <MessageList messages={messages} channel={channel} />
                     <MessageInput channelId={channelId} />
                 </>

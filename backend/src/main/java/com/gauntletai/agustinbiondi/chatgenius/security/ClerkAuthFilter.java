@@ -42,7 +42,7 @@ public class ClerkAuthFilter extends OncePerRequestFilter {
             try {
                 String clerkUserId = verifyAndGetClerkUserId(sessionToken);
                 if (clerkUserId != null) {
-                    userRepository.findByUserId(clerkUserId).ifPresent(user -> {
+                    userRepository.findByUserIdWithMemberships(clerkUserId).ifPresent(user -> {
                         List<SimpleGrantedAuthority> authorities = 
                             Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
                         

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { channelService } from '../../services/channelService';
 
 interface CreateChannelButtonProps {
@@ -9,6 +9,13 @@ export function CreateChannelButton({ onChannelCreated }: CreateChannelButtonPro
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [channelName, setChannelName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isModalOpen && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [isModalOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,6 +53,7 @@ export function CreateChannelButton({ onChannelCreated }: CreateChannelButtonPro
                         <h3 className="text-lg font-semibold mb-4">$ mkdir channel/</h3>
                         <form onSubmit={handleSubmit}>
                             <input
+                                ref={inputRef}
                                 type="text"
                                 value={channelName}
                                 onChange={(e) => setChannelName(e.target.value)}

@@ -11,6 +11,7 @@ import com.gauntletai.agustinbiondi.chatgenius.repository.ChannelRepository;
 import com.gauntletai.agustinbiondi.chatgenius.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -22,9 +23,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class ChannelService {
     private final ChannelRepository channelRepository;
     private final UserRepository userRepository;
@@ -32,13 +34,17 @@ public class ChannelService {
 
     @Transactional
     public ChannelDto createChannel(String userId, CreateChannelRequest request) {
+        log.info("Creating channel with name: {}, creator: {}", request.getName(), userId);
+        
         // Check if channel name already exists (for non-DM channels)
         if (!request.isDirectMessage() && channelRepository.existsByNameAndIsDirectMessageFalse(request.getName())) {
+            log.warn("Channel name already exists: {}", request.getName());
             throw new IllegalArgumentException("Channel name already exists");
         }
 
         User creator = userRepository.findByUserId(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        log.debug("Found creator user: {}", creator.getUsername());
 
         Channel channel = Channel.builder()
             .name(request.getName())
@@ -46,8 +52,32 @@ public class ChannelService {
             .createdBy(creator)
             .build();
 
-        channel = channelRepository.save(channel);
-        addMemberInternal(channel, creator);
+        // Save the channel first
+        channel = channelRepository.saveAndFlush(channel);
+        log.info("Saved channel with ID: {}", channel.getId());
+
+        // Create and save the membership
+        ChannelMembership membership = new ChannelMembership();
+        membership.setChannel(channel);
+        membership.setUser(creator);
+        membershipRepository.saveAndFlush(membership);
+        log.info("Added creator as member to channel");
+
+        // Add additional members if specified
+        for (String memberId : request.getMemberIds()) {
+            if (!memberId.equals(userId)) {
+                log.debug("Adding member with ID: {} to channel", memberId);
+                User member = userRepository.findByUserId(memberId)
+                    .orElseThrow(() -> new EntityNotFoundException("Member not found: " + memberId));
+                addMemberInternal(channel, member);
+            }
+        }
+
+        // Refresh the channel to get the updated memberships
+        channel = channelRepository.findById(channel.getId())
+            .orElseThrow(() -> new EntityNotFoundException("Channel not found after creation"));
+        log.info("Successfully created channel with ID: {} and {} members", 
+                channel.getId(), channel.getMemberships().size());
 
         return toDto(channel);
     }
@@ -103,6 +133,7 @@ public class ChannelService {
         }
 
         channelRepository.delete(channel);
+        channelRepository.flush();
     }
 
     public void addMember(UUID channelId, String userId, String memberToAddId) {
@@ -171,12 +202,17 @@ public class ChannelService {
         return String.format("DM:%s:%s", user1.getUsername(), user2.getUsername());
     }
 
+    @Transactional
     private void addMemberInternal(Channel channel, User user) {
         if (!membershipRepository.existsByChannelAndUser_UserId(channel, user.getUserId())) {
+            log.debug("Adding member {} to channel {}", user.getUsername(), channel.getName());
             ChannelMembership membership = new ChannelMembership();
             membership.setChannel(channel);
             membership.setUser(user);
-            membershipRepository.save(membership);
+            membershipRepository.saveAndFlush(membership);
+            log.debug("Successfully added member {} to channel {}", user.getUsername(), channel.getName());
+        } else {
+            log.debug("Member {} is already in channel {}", user.getUsername(), channel.getName());
         }
     }
 

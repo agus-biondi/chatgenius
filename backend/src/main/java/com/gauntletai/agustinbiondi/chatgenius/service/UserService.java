@@ -34,11 +34,17 @@ public class UserService {
 
     @Transactional
     public void createUser(String userId, String email, String username) {
+        // First check if user exists to provide a clear error message
+        if (userRepository.findByUserId(userId).isPresent()) {
+            throw new IllegalStateException("User already exists with ID: " + userId);
+        }
+
+        System.out.println("Creating new user: " + userId + " " + email + " " + username);
         User user = new User();
         user.setUserId(userId);
         user.setEmail(email);
         user.setUsername(username);
-        user.setRole(UserRole.USER); // Default role for new users
+        user.setRole(UserRole.USER);
         userRepository.save(user);
     }
 

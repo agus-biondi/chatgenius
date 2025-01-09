@@ -11,15 +11,27 @@ const api = axios.create({
 // Add request interceptor for auth token
 api.interceptors.request.use(async (config) => {
     console.log('Request interceptor - getting token...');
-    const token = await window.Clerk?.session?.getToken();
-    console.log('Token present:', !!token);
-    if (token) {
+    try {
+        // Wait for Clerk to be initialized
+        while (!window.Clerk?.session) {
+            console.log('Waiting for Clerk session to be available...');
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        const token = await window.Clerk.session.getToken();
+        console.log('Token present:', !!token);
+        
+        if (!token) {
+            throw new Error('No authentication token available');
+        }
+        
         config.headers.Authorization = `Bearer ${token}`;
         console.log('Added Authorization header');
-    } else {
-        console.warn('No token available');
+        return config;
+    } catch (error) {
+        console.error('Error in request interceptor:', error);
+        return Promise.reject(error);
     }
-    return config;
 });
 
 // Add response interceptor for error handling
@@ -27,6 +39,7 @@ api.interceptors.response.use(
     (response: AxiosResponse) => response,
     (error: AxiosError) => {
         if (error.response?.status === 401) {
+            console.log('Unauthorized request, redirecting to sign-in...');
             window.location.href = '/sign-in';
         }
         return Promise.reject(error);
