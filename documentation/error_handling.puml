@@ -1,0 +1,79 @@
+@startuml Error Handling
+
+skinparam backgroundColor white
+skinparam handwritten false
+
+participant "Frontend" as FE
+participant "Controller" as CTRL
+participant "Service" as SVC
+participant "Exception Handler" as EH
+participant "Security Filter" as SF
+database "Database" as DB
+
+== Authentication Errors ==
+FE -> SF: Invalid Token
+activate SF
+SF -> EH: AuthenticationException
+EH --> FE: 401 Unauthorized
+deactivate SF
+
+== Authorization Errors ==
+FE -> CTRL: Unauthorized Access
+activate CTRL
+CTRL -> SVC: Operation
+SVC -> EH: AccessDeniedException
+EH --> FE: 403 Forbidden
+deactivate CTRL
+
+== Validation Errors ==
+FE -> CTRL: Invalid Request
+activate CTRL
+CTRL -> EH: MethodArgumentNotValidException
+EH --> FE: 400 Bad Request\n+ Validation Details
+deactivate CTRL
+
+== Resource Errors ==
+FE -> CTRL: Request Resource
+activate CTRL
+CTRL -> SVC: Find Resource
+SVC -> DB: Query
+DB --> SVC: Not Found
+SVC -> EH: EntityNotFoundException
+EH --> FE: 404 Not Found
+deactivate CTRL
+
+== Business Logic Errors ==
+FE -> CTRL: Business Operation
+activate CTRL
+CTRL -> SVC: Process
+SVC -> EH: BusinessException
+EH --> FE: 422 Unprocessable Entity\n+ Business Error Details
+deactivate CTRL
+
+== Database Errors ==
+FE -> CTRL: Data Operation
+activate CTRL
+CTRL -> SVC: Process
+SVC -> DB: Operation
+DB --> SVC: SQL Exception
+SVC -> EH: DataAccessException
+EH --> FE: 500 Internal Server Error
+deactivate CTRL
+
+== Unexpected Errors ==
+FE -> CTRL: Any Request
+activate CTRL
+CTRL -> SVC: Process
+SVC -> EH: RuntimeException
+EH -> EH: Log Error
+EH --> FE: 500 Internal Server Error\n+ Error Reference
+deactivate CTRL
+
+note right of EH
+  All errors are:
+  1. Logged with stack trace
+  2. Given unique reference
+  3. Sanitized before sending to client
+end note
+
+@enduml 

@@ -1,0 +1,58 @@
+@startuml WebSocket Communication
+
+skinparam backgroundColor white
+skinparam handwritten false
+
+actor "User" as User
+participant "Frontend" as FE
+participant "WebSocket Server" as WS
+participant "Message Broker" as MB
+participant "Channel Handler" as CH
+database "Database" as DB
+
+== WebSocket Connection ==
+User -> FE: Connect to Chat
+FE -> WS: Connect to /ws
+WS --> FE: Connection Established
+FE -> WS: STOMP Connect
+WS --> FE: STOMP Connected
+
+== Subscribe to Channels ==
+FE -> WS: Subscribe to /topic/channel/{channelId}
+WS -> MB: Register Subscription
+MB --> WS: Subscription Confirmed
+WS --> FE: Subscription ACK
+
+== Message Flow ==
+User -> FE: Send Message
+FE -> WS: Send to /app/channel/{channelId}
+WS -> CH: Process Message
+CH -> DB: Save Message
+DB --> CH: Message Saved
+CH -> MB: Broadcast to /topic/channel/{channelId}
+MB -> WS: Broadcast Message
+WS --> FE: Deliver to Subscribers
+FE --> User: Display Message
+
+== Real-time Updates ==
+note over CH
+  Server can push updates for:
+  - New messages
+  - Channel updates
+  - Member status
+end note
+
+CH -> MB: Push Update
+MB -> WS: Broadcast Update
+WS --> FE: Deliver Update
+FE --> User: Update UI
+
+== Disconnection ==
+User -> FE: Close Chat
+FE -> WS: STOMP Disconnect
+WS -> MB: Remove Subscriptions
+WS --> FE: Disconnected
+FE -> WS: Close WebSocket
+WS --> FE: Connection Closed
+
+@enduml 

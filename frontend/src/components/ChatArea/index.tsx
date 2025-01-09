@@ -5,6 +5,7 @@ import { websocketService } from '../../services/websocketService';
 import { channelService } from '../../services/channelService';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
+import { Navbar } from './Navbar';
 
 interface ChatAreaProps {
     channelId: string | null;
@@ -129,7 +130,7 @@ export function ChatArea({ channelId }: ChatAreaProps) {
             fetchMessages();
             fetchChannel();
             // Subscribe to WebSocket updates
-            const subscriptions = websocketService.subscribeToChannel(channelId, handleWebSocketUpdate);
+            websocketService.subscribeToChannel(channelId, handleWebSocketUpdate);
             
             // Cleanup subscription when changing channels
             return () => {
@@ -158,6 +159,7 @@ export function ChatArea({ channelId }: ChatAreaProps) {
                 </div>
             ) : (
                 <>
+                    <Navbar />
                     <MessageList messages={messages} channel={channel} />
                     <MessageInput channelId={channelId} />
                 </>

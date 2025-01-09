@@ -1,19 +1,29 @@
 import { Client } from '@stomp/stompjs';
 import { Message, Reaction } from '../types';
 
+// Convert HTTP URL to WebSocket URL
+const getWebSocketUrl = () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+    const baseUrl = apiUrl.replace('/api', '').replace('http://', '').replace('https://', '');
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    return `${protocol}${baseUrl}/ws`;
+};
+
 class WebSocketService {
-    private client: Client;
+    private client: Client | null = null;
     private messageHandlers: Map<string, (message: Message | Reaction) => void> = new Map();
     private subscriptions: Map<string, any[]> = new Map();
     private isConnected: boolean = false;
     private pendingSubscriptions: Map<string, (message: Message | Reaction) => void> = new Map();
 
-    constructor() {
+    initialize() {
+        if (this.client) {
+            return;
+        }
+
         this.client = new Client({
-            brokerURL: 'ws://localhost:8080/ws',
-            debug: (str) => {
-                console.debug('STOMP:', str);
-            },
+            brokerURL: getWebSocketUrl(),
+            debug: import.meta.env.DEV ? (str) => console.debug('STOMP:', str) : undefined,
             reconnectDelay: 5000,
             heartbeatIncoming: 4000,
             heartbeatOutgoing: 4000,
@@ -33,6 +43,17 @@ class WebSocketService {
         this.client.activate();
     }
 
+    disconnect() {
+        if (this.client) {
+            this.client.deactivate();
+            this.client = null;
+            this.isConnected = false;
+            this.messageHandlers.clear();
+            this.subscriptions.clear();
+            this.pendingSubscriptions.clear();
+        }
+    }
+
     private processPendingSubscriptions() {
         this.pendingSubscriptions.forEach((handler, channelId) => {
             this.subscribeToChannel(channelId, handler);
@@ -41,7 +62,7 @@ class WebSocketService {
     }
 
     subscribeToChannel(channelId: string, onMessage: (message: Message | Reaction) => void) {
-        if (!this.isConnected) {
+        if (!this.client || !this.isConnected) {
             console.log('WebSocket not connected, queueing subscription for channel:', channelId);
             this.pendingSubscriptions.set(channelId, onMessage);
             return;
@@ -100,18 +121,6 @@ class WebSocketService {
         this.pendingSubscriptions.delete(channelId);
     }
 
-    subscribeToStarWars(channelId: string, onFrame: (frame: string) => void) {
-        if (!this.isConnected) {
-            console.log('WebSocket not connected, cannot subscribe to Star Wars');
-            return;
-        }
-
-        console.log('Subscribing to Star Wars frames for channel:', channelId);
-        return this.client.subscribe(`/topic/channel/${channelId}/starwars`, (message) => {
-            console.debug('Received Star Wars frame');
-            onFrame(message.body);
-        });
-    }
 }
 
 export const websocketService = new WebSocketService(); 

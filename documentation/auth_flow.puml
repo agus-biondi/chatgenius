@@ -1,0 +1,37 @@
+@startuml Authentication Flow
+
+skinparam backgroundColor white
+skinparam handwritten false
+
+actor Client
+participant "Frontend" as FE
+participant "Clerk" as Clerk
+participant "Backend API" as API
+participant "ClerkAuthFilter" as Filter
+database "Database" as DB
+
+== Authentication ==
+Client -> FE: Access Application
+FE -> Clerk: Sign In/Sign Up
+Clerk --> FE: Return Session Token
+FE -> API: API Request + Bearer Token
+activate API
+API -> Filter: Intercept Request
+activate Filter
+Filter -> Clerk: Verify Token (JWKS)
+Clerk --> Filter: Token Verification Result
+Filter -> DB: Find User by Clerk ID
+DB --> Filter: User Details
+Filter -> Filter: Set Security Context
+Filter --> API: Continue Request
+deactivate Filter
+API --> FE: Response
+deactivate API
+
+== Webhook Events ==
+Clerk -> API: User Event Webhook
+API -> DB: Update User Data
+DB --> API: Confirmation
+API --> Clerk: 200 OK
+
+@enduml 

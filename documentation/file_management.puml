@@ -1,0 +1,72 @@
+@startuml File Management
+
+skinparam backgroundColor white
+skinparam handwritten false
+
+actor "User" as User
+participant "Frontend" as FE
+participant "FileController" as FC
+participant "FileService" as FS
+database "Database" as DB
+database "File Storage" as Storage
+
+== File Upload ==
+User -> FE: Select File
+FE -> FC: POST /api/files\nMultipartFile
+activate FC
+FC -> FS: uploadFile()
+activate FS
+FS -> FS: Validate File
+FS -> Storage: Store File
+Storage --> FS: File URL
+FS -> DB: Save File Metadata
+DB --> FS: File Record
+FS --> FC: FileDto
+deactivate FS
+FC --> FE: File Details
+deactivate FC
+FE --> User: Upload Complete
+
+== File Listing ==
+User -> FE: View Channel Files
+FE -> FC: GET /api/files/channel/{channelId}
+activate FC
+FC -> FS: getChannelFiles()
+FS -> DB: Query Files
+DB --> FS: File List
+FS --> FC: Page<FileDto>
+FC --> FE: File List
+deactivate FC
+FE --> User: Display Files
+
+== File Deletion ==
+User -> FE: Delete File
+FE -> FC: DELETE /api/files/{fileId}
+activate FC
+FC -> FS: deleteFile()
+FS -> DB: Check Permissions
+DB --> FS: Verified
+FS -> Storage: Delete File
+Storage --> FS: Deleted
+FS -> DB: Delete Metadata
+DB --> FS: Confirmed
+FS --> FC: Success
+FC --> FE: File Deleted
+deactivate FC
+FE --> User: Confirmation
+
+== File Download ==
+User -> FE: Download File
+FE -> FC: GET /api/files/{fileId}/download
+activate FC
+FC -> FS: downloadFile()
+FS -> DB: Check Access
+DB --> FS: Verified
+FS -> Storage: Get File
+Storage --> FS: File Stream
+FS --> FC: File Content
+FC --> FE: File Download
+deactivate FC
+FE --> User: Save File
+
+@enduml 

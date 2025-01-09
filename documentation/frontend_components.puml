@@ -1,0 +1,106 @@
+@startuml Frontend Component Hierarchy
+
+skinparam backgroundColor white
+skinparam handwritten false
+skinparam component {
+    BackgroundColor White
+    BorderColor Black
+    ArrowColor Black
+}
+
+package "App Structure" {
+    [App] as app
+    [ProtectedRoute] as protectedRoute
+    [AuthLayout] as authLayout
+    [ChatLayout] as chatLayout
+}
+
+package "Authentication" {
+    [SignIn] as signIn
+    [SignUp] as signUp
+    [SignedOut] as signedOut
+    [ClerkProvider] as clerkProvider
+}
+
+package "Chat Components" {
+    package "Sidebar" {
+        [ChannelList] as channelList
+        [CreateChannelButton] as createChannel
+        [UserList] as userList
+    }
+    
+    package "ChatArea" {
+        [Navbar] as navbar
+        [MessageList] as messageList
+        [MessageInput] as messageInput
+        [EmojiPicker] as emojiPicker
+        [ReactionGroup] as reactionGroup
+    }
+}
+
+package "Services" {
+    [channelService] as channelSvc
+    [messageService] as messageSvc
+    [websocketService] as wsSvc
+    [userService] as userSvc
+    [reactionService] as reactionSvc
+}
+
+' Main Structure
+clerkProvider --> app
+app --> protectedRoute
+protectedRoute --> chatLayout
+app --> authLayout
+
+' Auth Flow
+authLayout --> signIn
+authLayout --> signUp
+authLayout --> signedOut
+
+' Chat Layout Structure
+chatLayout --> channelList
+chatLayout --> messageList
+chatLayout --> navbar
+
+' Sidebar Components
+channelList --> createChannel
+channelList --> userList
+
+' Chat Area Components
+messageList --> messageInput
+messageList --> emojiPicker
+messageList --> reactionGroup
+
+' Service Dependencies
+chatLayout ..> channelSvc
+chatLayout ..> wsSvc
+chatLayout ..> userSvc
+messageList ..> messageSvc
+messageList ..> reactionSvc
+channelList ..> channelSvc
+userList ..> userSvc
+
+note right of app
+  Main application container
+  Handles routing and layout switching
+end note
+
+note right of chatLayout
+  Main chat interface
+  Manages WebSocket connection
+  Handles real-time updates
+end note
+
+note right of messageList
+  Displays messages
+  Handles reactions
+  Supports threading
+end note
+
+note right of wsSvc
+  WebSocket connection
+  Real-time message delivery
+  Channel updates
+end note
+
+@enduml 

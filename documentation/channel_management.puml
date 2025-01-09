@@ -1,0 +1,69 @@
+@startuml Channel Management
+
+skinparam backgroundColor white
+skinparam handwritten false
+
+actor "Authenticated User" as User
+participant "Frontend" as FE
+participant "ChannelController" as CC
+participant "ChannelService" as CS
+database "Database" as DB
+
+== Channel Creation ==
+User -> FE: Create Channel
+FE -> CC: POST /api/channels
+CC -> CS: createChannel()
+CS -> DB: Save Channel
+DB --> CS: Channel Created
+CS --> CC: ChannelDto
+CC --> FE: Channel Details
+FE --> User: Channel Created
+
+== Direct Message Channel ==
+User -> FE: Start DM
+FE -> CC: POST /api/channels/dm/{otherUserId}
+CC -> CS: createOrGetDirectMessageChannel()
+CS -> DB: Find/Create DM Channel
+DB --> CS: Channel Details
+CS --> CC: ChannelDto
+CC --> FE: Channel Details
+FE --> User: DM Channel Ready
+
+== Channel Management ==
+User -> FE: Add Member
+FE -> CC: POST /channels/{id}/members/{memberId}
+CC -> CS: addMember()
+CS -> DB: Update Channel Members
+DB --> CS: Updated
+CS --> CC: Success
+CC --> FE: Member Added
+
+User -> FE: Remove Member
+FE -> CC: DELETE /channels/{id}/members/{memberId}
+CC -> CS: removeMember()
+CS -> DB: Update Channel Members
+DB --> CS: Updated
+CS --> CC: Success
+CC --> FE: Member Removed
+
+== Channel Listing ==
+User -> FE: Get Channels
+FE -> CC: GET /api/channels
+CC -> CS: getUserChannels()
+CS -> DB: Query User Channels
+DB --> CS: Channel List
+CS --> CC: Page<ChannelDto>
+CC --> FE: Channel List
+FE --> User: Display Channels
+
+== Channel Deletion ==
+User -> FE: Delete Channel
+FE -> CC: DELETE /api/channels/{id}
+CC -> CS: deleteChannel()
+CS -> DB: Delete Channel
+DB --> CS: Deleted
+CS --> CC: Success
+CC --> FE: Channel Deleted
+FE --> User: Confirmation
+
+@enduml 

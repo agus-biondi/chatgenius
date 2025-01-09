@@ -1,0 +1,78 @@
+@startuml Database Schema
+
+!define table(x) class x << (T,#FFAAAA) >>
+!define primary_key(x) <u>x</u>
+!define foreign_key(x) #x#
+
+skinparam class {
+    BackgroundColor White
+    ArrowColor Black
+    BorderColor Black
+}
+
+table(users) {
+    primary_key(user_id): VARCHAR(255)
+    email: VARCHAR(255)
+    username: VARCHAR(255)
+    role: VARCHAR(50)
+    created_at: TIMESTAMP
+}
+
+table(channels) {
+    primary_key(id): UUID
+    name: VARCHAR(255)
+    is_direct_message: BOOLEAN
+    foreign_key(created_by): VARCHAR(255)
+    created_at: TIMESTAMP
+}
+
+table(channel_memberships) {
+    primary_key(id): UUID
+    foreign_key(channel_id): UUID
+    foreign_key(user_id): VARCHAR(255)
+    joined_at: TIMESTAMP
+}
+
+table(messages) {
+    primary_key(id): UUID
+    content: TEXT
+    foreign_key(channel_id): UUID
+    foreign_key(created_by): VARCHAR(255)
+    foreign_key(parent_message_id): UUID
+    created_at: TIMESTAMP
+    updated_at: TIMESTAMP
+}
+
+table(reactions) {
+    primary_key(id): UUID
+    emoji: VARCHAR(255)
+    foreign_key(message_id): UUID
+    foreign_key(user_id): VARCHAR(255)
+    created_at: TIMESTAMP
+}
+
+table(files) {
+    primary_key(id): UUID
+    name: VARCHAR(255)
+    url: VARCHAR(1024)
+    size: BIGINT
+    mime_type: VARCHAR(255)
+    foreign_key(channel_id): UUID
+    foreign_key(uploaded_by): VARCHAR(255)
+    created_at: TIMESTAMP
+}
+
+users "1" -- "*" channel_memberships
+users "1" -- "*" channels : creates
+users "1" -- "*" messages : creates
+users "1" -- "*" reactions
+users "1" -- "*" files : uploads
+
+channels "1" -- "*" channel_memberships
+channels "1" -- "*" messages
+channels "1" -- "*" files
+
+messages "1" -- "*" messages : parent/child
+messages "1" -- "*" reactions
+
+@enduml 

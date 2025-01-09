@@ -9,8 +9,15 @@ interface PageResponse<T> {
 
 export const channelService = {
     async getChannels(page = 0, size = 20) {
-        const response = await api.get<PageResponse<Channel>>('/channels', { params: { page, size } });
-        return response.data.content;
+        console.log('Calling getChannels with page:', page, 'size:', size);
+        try {
+            const response = await api.get<PageResponse<Channel>>('/channels', { params: { page, size } });
+            console.log('getChannels response:', response);
+            return response.data.content;
+        } catch (error) {
+            console.error('getChannels error:', error);
+            throw error;
+        }
     },
 
     async createChannel(request: CreateChannelRequest) {

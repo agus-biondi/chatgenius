@@ -1,18 +1,30 @@
-import { User } from '../types';
-import axios from 'axios';
+import apiClient from './apiClient';
+import type { UserResource } from '@clerk/types';
 
-const api = axios.create({
-    baseURL: 'http://localhost:8080/api',
-    headers: {
-        'Content-Type': 'application/json',
+export const userService = {
+  // Only called after successful Clerk signup in development
+  handleNewUserSignup: async (userId: string) => {
+    if (import.meta.env.DEV && userId) {
+      try {
+        await apiClient.post('/users/dev/sync', {
+          id: userId
+        });
+      } catch (error) {
+        console.error('Failed to sync new user with backend:', error);
+      }
     }
-});
+  },
 
-class UserService {
-    async getActiveUsers(): Promise<User[]> {
-        const response = await api.get('/users/active');
-        return response.data;
+  syncUserWithBackend: async (user: UserResource) => {
+    if (import.meta.env.DEV && user) {
+      try {
+        await apiClient.post('/users/dev/sync', {
+          id: user.id,
+          email: user.primaryEmailAddress?.emailAddress
+        });
+      } catch (error) {
+        console.error('Failed to sync user with backend:', error);
+      }
     }
-}
-
-export const userService = new UserService(); 
+  }
+}; 

@@ -1,6 +1,11 @@
 package com.gauntletai.agustinbiondi.chatgenius.security;
 
-import com.gauntletai.agustinbiondi.chatgenius.model.User;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.auth0.jwk.JwkProvider;
+import com.auth0.jwk.UrlJwkProvider;
+import com.auth0.jwk.Jwk;
 import com.gauntletai.agustinbiondi.chatgenius.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -13,7 +18,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
+import java.net.URI;
+import java.security.interfaces.RSAPublicKey;
 import java.util.Collections;
 import java.util.List;
 
@@ -22,51 +30,55 @@ import java.util.List;
 public class ClerkAuthFilter extends OncePerRequestFilter {
     private final UserRepository userRepository;
     
-    @Value("${clerk.public-key}")
-    private String clerkPublicKey;
+    @Value("${clerk.issuer}")
+    private String clerkIssuer;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String token = request.getHeader("Authorization");
-        
         if (token != null && token.startsWith("Bearer ")) {
             String sessionToken = token.substring(7);
             try {
-                // TODO: Use clerk-sdk-java to verify the token
-                // For now, we'll validate the token format and look up the user
                 String clerkUserId = verifyAndGetClerkUserId(sessionToken);
                 if (clerkUserId != null) {
-                    User user = userRepository.findByUserId(clerkUserId)
-                        .orElseGet(() -> createNewUser(clerkUserId));
-                    
-                    List<SimpleGrantedAuthority> authorities = 
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-                    
-                    UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(user, null, authorities);
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    userRepository.findByUserId(clerkUserId).ifPresent(user -> {
+                        List<SimpleGrantedAuthority> authorities = 
+                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+                        
+                        UsernamePasswordAuthenticationToken authentication = 
+                            new UsernamePasswordAuthenticationToken(user, null, authorities);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    });
                 }
             } catch (Exception e) {
+                System.err.println("Error processing token: " + e.getMessage());
+                e.printStackTrace();
                 SecurityContextHolder.clearContext();
             }
         }
-        
         filterChain.doFilter(request, response);
     }
 
     private String verifyAndGetClerkUserId(String token) {
-        // TODO: Implement token verification using clerk-sdk-java
-        // For now, return null to indicate invalid token
-        return null;
-    }
+        try {
+            DecodedJWT unverifiedJwt = JWT.decode(token);
+            String jwksUrl = clerkIssuer + "/.well-known/jwks.json";
+            JwkProvider provider = new UrlJwkProvider(URI.create(jwksUrl).toURL());
+            Jwk jwk = provider.get(unverifiedJwt.getKeyId());
+            
+            Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
+            DecodedJWT jwt = JWT.require(algorithm)
+                .withIssuer(clerkIssuer)
+                .build()
+                .verify(token);
 
-    private User createNewUser(String clerkUserId) {
-        // TODO: Implement user creation with Clerk user data
-        // For now, return a basic user
-        User user = new User();
-        user.setUserId(clerkUserId);
-        return userRepository.save(user);
+            return jwt.getSubject();
+        } catch (Exception e) {
+            System.err.println("Failed to verify token: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override
