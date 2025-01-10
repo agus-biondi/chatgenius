@@ -4,6 +4,7 @@ import { Channel, User } from '../../types';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { userService } from '../../services/userService';
 import { channelService } from '../../services/channelService';
+import { websocketService } from '../../services/websocketService';
 
 interface SidebarProps {
     channels: Channel[];
@@ -326,10 +327,21 @@ export const Sidebar = memo(function Sidebar({
         };
 
         fetchUsers();
+
+        // Subscribe to channel events for user updates
+        const cleanupSubscriptions = channels.map(channel => 
+            websocketService.subscribeToChannel(channel.id, (event) => {
+                if (event.type === 'USER_UPDATE') {
+                    fetchUsers(); // Refresh the users list when a user is updated
+                }
+            })
+        );
+
         return () => {
             mounted = false;
+            cleanupSubscriptions.forEach(cleanup => cleanup());
         };
-    }, []);
+    }, [channels]); // Re-subscribe when channels change
 
     // Memoize channel names array
     const channelNames = useMemo(() => channels.map(ch => ch.name), [channels]);
