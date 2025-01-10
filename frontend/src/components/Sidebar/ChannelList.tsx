@@ -1,6 +1,6 @@
 import { Channel } from '../../types';
 import { channelService } from '../../services/channelService';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 
 interface ChannelListProps {
     channels: Channel[];
@@ -14,7 +14,51 @@ interface ChannelListProps {
     onChannelCreated: () => void;
 }
 
+const ChannelItem = memo(function ChannelItem({
+    channel,
+    isSelected,
+    onSelect,
+    onDelete,
+    canDelete
+}: {
+    channel: Channel;
+    isSelected: boolean;
+    onSelect: (channelId: string) => void;
+    onDelete: (channel: Channel, e: React.MouseEvent) => void;
+    canDelete: boolean;
+}) {
+    console.log(`[ChannelItem] Rendering channel: ${channel.name}, selected: ${isSelected}`);
+
+    return (
+        <div className="flex items-center justify-between group">
+            <button
+                onClick={() => onSelect(channel.id)}
+                className={`flex-1 p-2 text-left hover:bg-[var(--terminal-gray)] transition-colors ${
+                    isSelected ? 'bg-[var(--terminal-gray)]' : ''
+                }`}
+            >
+                <span className="text-[#6edb71]">{isSelected ? '>' : '-'} {channel.name}</span>
+            </button>
+            {canDelete && (
+                <button
+                    onClick={(e) => onDelete(channel, e)}
+                    className="px-2 opacity-0 group-hover:opacity-100 text-[#9ba8b9] hover:text-[#db6e7a]"
+                    title="Delete channel"
+                >
+                    [rm]
+                </button>
+            )}
+        </div>
+    );
+});
+
 export function ChannelList({ channels, selectedChannelId, onSelectChannel, currentUser, onChannelCreated }: ChannelListProps) {
+    console.log('[ChannelList] Rendering with', {
+        channelCount: channels.length,
+        selectedChannelId,
+        currentUser: currentUser?.username
+    });
+
     const isAdmin = currentUser?.role === 'ADMIN';
     const [deletingChannel, setDeletingChannel] = useState<Channel | null>(null);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -26,6 +70,7 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
 
     useEffect(() => {
         if (isModalOpen && inputRef.current) {
+            console.log('[ChannelList] Opening create modal');
             inputRef.current.focus();
         }
     }, [isModalOpen]);
@@ -34,7 +79,10 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
         e.preventDefault();
         if (!channelName.trim()) return;
 
+        console.log('[ChannelList] Attempting to create channel:', channelName);
+
         if (channels.some(ch => ch.name.toLowerCase() === channelName.trim().toLowerCase())) {
+            console.log('[ChannelList] Channel name already exists:', channelName);
             setError(`touch: cannot create channel '${channelName}': File exists`);
             return;
         }
@@ -47,11 +95,11 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
                 isDirectMessage: false,
                 memberIds: []
             });
-            onChannelCreated();
+            console.log('[ChannelList] Channel creation request sent, waiting for WebSocket event');
             setChannelName('');
             setIsModalOpen(false);
         } catch (error) {
-            console.error('Failed to create channel:', error);
+            console.error('[ChannelList] Failed to create channel:', error);
             setError('touch: cannot create channel: An unexpected error occurred');
         } finally {
             setIsLoading(false);
@@ -65,6 +113,7 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
 
     const handleDelete = async (channel: Channel, e: React.MouseEvent) => {
         e.stopPropagation();
+        console.log('[ChannelList] Opening delete confirmation for channel:', channel.name);
         setDeletingChannel(channel);
         setDeleteConfirmText('');
     };
@@ -72,18 +121,23 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
     const confirmDelete = async () => {
         if (!deletingChannel) return;
         const expectedCommand = `rm -rf ${deletingChannel.name}`;
+        
+        console.log('[ChannelList] Confirming delete for channel:', deletingChannel.name);
+        
         if (deleteConfirmText.toLowerCase() !== expectedCommand.toLowerCase()) {
+            console.log('[ChannelList] Invalid delete command:', deleteConfirmText);
             setDeleteConfirmText('');
             return;
         }
 
         try {
             await channelService.deleteChannel(deletingChannel.id);
+            console.log('[ChannelList] Channel deleted successfully:', deletingChannel.name);
             onChannelCreated();
             setDeletingChannel(null);
             setDeleteConfirmText('');
         } catch (error) {
-            console.error('Failed to delete channel:', error);
+            console.error('[ChannelList] Failed to delete channel:', error);
         }
     };
 
@@ -103,28 +157,14 @@ export function ChannelList({ channels, selectedChannelId, onSelectChannel, curr
             ) : (
                 <>
                     {channels.map(channel => (
-                        <div
+                        <ChannelItem
                             key={channel.id}
-                            className="flex items-center justify-between group"
-                        >
-                            <button
-                                onClick={() => onSelectChannel(channel.id)}
-                                className={`flex-1 p-2 text-left hover:bg-[var(--terminal-gray)] transition-colors ${
-                                    selectedChannelId === channel.id ? 'bg-[var(--terminal-gray)]' : ''
-                                }`}
-                            >
-                                <span className="text-[#6edb71]">{selectedChannelId === channel.id ? '>' : '-'} {channel.name}</span>
-                            </button>
-                            {canDeleteChannel(channel) && (
-                                <button
-                                    onClick={(e) => handleDelete(channel, e)}
-                                    className="px-2 opacity-0 group-hover:opacity-100 text-[#9ba8b9] hover:text-[#db6e7a]"
-                                    title="Delete channel"
-                                >
-                                    [rm]
-                                </button>
-                            )}
-                        </div>
+                            channel={channel}
+                            isSelected={selectedChannelId === channel.id}
+                            onSelect={onSelectChannel}
+                            onDelete={handleDelete}
+                            canDelete={canDeleteChannel(channel)}
+                        />
                     ))}
                     {deletingChannel && (
                         <div className="mt-4 p-2 border border-[#6edb71] bg-[var(--terminal-gray)]">

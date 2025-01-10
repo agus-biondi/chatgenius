@@ -31,6 +31,7 @@ public class ChannelService {
     private final ChannelRepository channelRepository;
     private final UserRepository userRepository;
     private final ChannelMembershipRepository membershipRepository;
+    private final ChannelWebSocketService channelWebSocketService;
 
     @Transactional
     public ChannelDto createChannel(String userId, CreateChannelRequest request) {
@@ -79,7 +80,12 @@ public class ChannelService {
         log.info("Successfully created channel with ID: {} and {} members", 
                 channel.getId(), channel.getMemberships().size());
 
-        return toDto(channel);
+        ChannelDto channelDto = toDto(channel);
+        
+        // Broadcast channel creation event
+        channelWebSocketService.broadcastChannelCreated(channelDto, userId);
+
+        return channelDto;
     }
 
     @Transactional
@@ -134,6 +140,9 @@ public class ChannelService {
 
         channelRepository.delete(channel);
         channelRepository.flush();
+
+        // Broadcast channel deletion event
+        channelWebSocketService.broadcastChannelDeleted(channelId, userId);
     }
 
     public void addMember(UUID channelId, String userId, String memberToAddId) {

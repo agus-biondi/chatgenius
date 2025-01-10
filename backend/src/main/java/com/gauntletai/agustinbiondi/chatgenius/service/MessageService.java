@@ -11,6 +11,7 @@ import com.gauntletai.agustinbiondi.chatgenius.model.UserRole;
 import com.gauntletai.agustinbiondi.chatgenius.repository.ChannelRepository;
 import com.gauntletai.agustinbiondi.chatgenius.repository.MessageRepository;
 import com.gauntletai.agustinbiondi.chatgenius.repository.UserRepository;
+import com.gauntletai.agustinbiondi.chatgenius.repository.ChannelMembershipRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +22,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
-
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.HashMap;
@@ -39,6 +38,7 @@ public class MessageService {
     private final UserRepository userRepository;
     private final ChannelService channelService;
     private final ReactionService reactionService;
+    private final ChannelMembershipRepository membershipRepository;
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
@@ -83,30 +83,25 @@ public class MessageService {
             .payload(payload)
             .build();
 
-        // Send WebSocket notification
-        String destination = "/topic/channel/" + channelId;
-        log.info("Publishing message event to WebSocket topic: {}", destination);
-        messagingTemplate.convertAndSend(destination, event);
+        // Send to channel subscribers
+        String channelTopic = String.format("/topic/channel/%s", channelId);
+        messagingTemplate.convertAndSend(channelTopic, event);
 
-        // Send light notification for other channels
-        WebSocketEventDto notification = WebSocketEventDto.builder()
-            .type(EventType.NOTIFICATION)
-            .channelId(channelId)
-            .messageId(refreshedMessage.getId())
-            .userId(userId)
-            .timestamp(refreshedMessage.getCreatedAt())
-            .build();
-        messagingTemplate.convertAndSend("/topic/notifications", notification);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void publishMessage(MessageDto messageDto) {
-        // Publish the new message to WebSocket subscribers
-        String destination = "/topic/channel/" + messageDto.getChannelId();
-        log.info("Publishing WebSocket message to: {}", destination);
-        log.debug("Message DTO before publishing: {}", messageDto);
-        messagingTemplate.convertAndSend(destination, messageDto);
-        log.debug("Published message: {}", messageDto);
+        // Send notifications to channel members who aren't currently viewing
+        membershipRepository.findByChannel(channel).stream()
+            .map(membership -> membership.getUser().getUserId())
+            .filter(memberId -> !memberId.equals(userId)) // Don't notify sender
+            .forEach(memberId -> {
+                String userTopic = String.format("/topic/user/%s/notifications", memberId);
+                WebSocketEventDto notification = WebSocketEventDto.builder()
+                    .type(EventType.NOTIFICATION)
+                    .channelId(channelId)
+                    .messageId(refreshedMessage.getId())
+                    .userId(userId)
+                    .timestamp(refreshedMessage.getCreatedAt())
+                    .build();
+                messagingTemplate.convertAndSend(userTopic, notification);
+            });
     }
 
     @Transactional(readOnly = true)
@@ -151,21 +146,24 @@ public class MessageService {
             throw new AccessDeniedException("Not authorized to delete this message");
         }
 
-        // Create event before deletion
+        UUID channelId = message.getChannel().getId();
+        
+        // Delete the message and ensure it's committed
+        messageRepository.delete(message);
+        messageRepository.flush();
+
+        // Create event after successful deletion
         WebSocketEventDto event = WebSocketEventDto.builder()
             .type(EventType.MESSAGE_DELETE)
-            .channelId(message.getChannel().getId())
+            .channelId(channelId)
             .messageId(messageId)
             .userId(userId)
             .timestamp(LocalDateTime.now())
             .build();
 
-        // Delete the message
-        messageRepository.delete(message);
-
-        // Send WebSocket notification
-        String destination = "/topic/channel/" + message.getChannel().getId();
-        messagingTemplate.convertAndSend(destination, event);
+        // Send to channel subscribers
+        String channelTopic = String.format("/topic/channel/%s", channelId);
+        messagingTemplate.convertAndSend(channelTopic, event);
     }
 
     @Transactional(readOnly = true)
@@ -207,8 +205,9 @@ public class MessageService {
             .payload(payload)
             .build();
 
-        String destination = "/topic/channel/" + message.getChannel().getId();
-        messagingTemplate.convertAndSend(destination, event);
+        // Send to channel subscribers
+        String channelTopic = String.format("/topic/channel/%s", message.getChannel().getId());
+        messagingTemplate.convertAndSend(channelTopic, event);
 
         return messageDto;
     }

@@ -55,7 +55,7 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
     }, [channelId]);
 
     return (
-        <div className="border-t border-[#6edb71]">
+        <div className="border-t border-[#6edb71] relative z-10">
             <form onSubmit={handleSubmit} className="p-4">
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
                             onChange={(e) => setMessage(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder="# Write message to append to channel"
-                            className="flex-1 p-2 bg-[var(--terminal-gray)] text-[#b8cceb] placeholder-[#9ba8b9] outline-none border border-transparent focus:border-[#6edb71] transition-colors resize-none min-h-[24px] leading-6"
+                            className="flex-1 p-2 bg-[var(--terminal-gray)] text-[#b8cceb] placeholder-[#9ba8b9] outline-none border border-transparent focus:border-[#6edb71] transition-colors resize-none min-h-[24px] leading-6 relative z-10"
                             disabled={isLoading}
                             rows={1}
                         />

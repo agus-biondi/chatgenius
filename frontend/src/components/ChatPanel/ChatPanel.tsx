@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Message, Reaction, Channel, WebSocketEvent } from '../../types';
+import { Message, Reaction, Channel, WebSocketEvent } from '../../types/index';
 import { messageService } from '../../services/messageService';
 import { websocketService } from '../../services/websocketService';
 import { channelService } from '../../services/channelService';
@@ -16,17 +16,6 @@ export function ChatPanel({ channelId }: ChatPanelProps) {
     const [channel, setChannel] = useState<Channel | null>(null);
 
     const handleWebSocketUpdate = (data: WebSocketEvent) => {
-        console.log('Received WebSocket event:', data);
-
-        // Only process events for current channel
-        if (data.channelId !== channelId) {
-            // Handle notifications for other channels here if needed
-            if (data.type === 'NOTIFICATION') {
-                // TODO: Update unread indicators, etc.
-                return;
-            }
-            return;
-        }
 
         switch (data.type) {
             case 'MESSAGE_NEW':
@@ -54,7 +43,32 @@ export function ChatPanel({ channelId }: ChatPanelProps) {
                 break;
 
             case 'REACTION_REMOVE':
-                handleRemovedReaction(data.messageId, data.entityId!, data.payload?.emoji);
+                if (data.messageId && data.entityId) {
+                    handleRemovedReaction(data.messageId, data.entityId);
+                }
+                break;
+
+            case 'USER_UPDATE':
+                if (data.userId && data.payload?.username) {
+                    // Update username in all messages and their reactions from this user
+                    setMessages(prev => prev.map(msg => {
+                        const updatedMsg = msg.createdById === data.userId
+                            ? { ...msg, createdByUsername: data.payload!.username! }
+                            : msg;
+
+                        // Also update username in reactions
+                        const updatedReactions = msg.reactions.map(reaction =>
+                            reaction.userId === data.userId
+                                ? { ...reaction, username: data.payload!.username! }
+                                : reaction
+                        );
+
+                        return {
+                            ...updatedMsg,
+                            reactions: updatedReactions
+                        };
+                    }));
+                }
                 break;
 
             default:
@@ -80,23 +94,25 @@ export function ChatPanel({ channelId }: ChatPanelProps) {
             if (message.id === reaction.messageId) {
                 const updatedReactions = [...message.reactions];
                 const existingIndex = updatedReactions.findIndex(r => r.id === reaction.id);
+                
                 if (existingIndex >= 0) {
                     updatedReactions[existingIndex] = reaction;
                 } else {
                     updatedReactions.push(reaction);
                 }
+                
                 return { ...message, reactions: updatedReactions };
             }
             return message;
         }));
     };
 
-    const handleRemovedReaction = (messageId: string, reactionId: string, emoji?: string) => {
+    const handleRemovedReaction = (messageId: string, reactionId: string) => {
         setMessages(prev => prev.map(message => {
             if (message.id === messageId) {
                 return {
                     ...message,
-                    reactions: message.reactions.filter(r => r.id !== reactionId)
+                    reactions: message.reactions.filter((r: Reaction) => r.id !== reactionId)
                 };
             }
             return message;
@@ -148,19 +164,22 @@ export function ChatPanel({ channelId }: ChatPanelProps) {
             console.log('ChatArea: Fetching messages and subscribing to channel:', channelId);
             fetchMessages();
             fetchChannel();
-            // Subscribe to WebSocket updates
-            websocketService.subscribeToChannel(channelId, handleWebSocketUpdate);
-            
-            // Cleanup subscription when changing channels
+
+            // Subscribe to channel-specific WebSocket events
+            const cleanupSubscription = websocketService.subscribeToChannel(
+                channelId,
+                handleWebSocketUpdate
+            );
+
             return () => {
                 console.log('ChatArea: Cleaning up subscriptions for channel:', channelId);
-                websocketService.unsubscribeFromChannel(channelId);
+                cleanupSubscription();
             };
         }
     }, [channelId]);
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative z-0">
             {!channelId ? (
                 <div className="flex-1 flex items-center justify-center opacity-70">
                     $ select --channel to start chatting
@@ -168,13 +187,15 @@ export function ChatPanel({ channelId }: ChatPanelProps) {
             ) : isLoading ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-4">
                     <div className="text-[var(--terminal-green)] opacity-70">
-                        $ dialing up...
+                        Loading...
                     </div>
+                    {/* Fun loading message for future use
                     <div className="text-[var(--terminal-green)] text-center">
                         <div>"Mom, get off the phone!</div>
                         <div>I'm trying to enable smarter</div>
                         <div>workplace communication with AI!"</div>
                     </div>
+                    */}
                 </div>
             ) : (
                 <>

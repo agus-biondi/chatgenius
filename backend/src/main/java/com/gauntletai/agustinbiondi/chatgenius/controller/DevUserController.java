@@ -23,8 +23,8 @@ public class DevUserController {
         try {
             // Check if user already exists
             if (userService.userExists(request.getId())) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("User already exists");
+                // User already exists, do nothing
+                return ResponseEntity.ok().build();
             }
 
             // Use email as username if not provided

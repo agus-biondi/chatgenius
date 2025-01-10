@@ -1,6 +1,5 @@
 package com.gauntletai.agustinbiondi.chatgenius.config;
 
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -17,22 +16,25 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Value("${spring.webmvc.cors.allowed-origins:http://localhost:5173}")
     private String allowedOrigins;
 
-    @PostConstruct
-    public void init() {
-        log.info("WebSocket configuration initialized with allowed origins: {}", allowedOrigins);
-    }
-
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic");
+        config.enableSimpleBroker(
+            "/topic/channel/",     // Channel-specific events (messages, reactions)
+            "/topic/user/",        // User-specific notifications
+            "/topic/channels"      // Global channel events (create, delete, update)
+        );
         config.setApplicationDestinationPrefixes("/app");
-        log.info("Message broker configured with topics: /topic, application prefix: /app");
+
+        // TODO: Future considerations
+        // 1. Consider setting heartbeat intervals for better connection management
+        // 2. Consider setting message size limits
+        // 3. Consider setting buffer sizes for performance
+        // 4. Consider adding user destination prefix for direct messaging
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
             .setAllowedOrigins(allowedOrigins.split(","));
-        log.info("STOMP endpoint registered at /ws");
     }
 } 

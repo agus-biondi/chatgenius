@@ -1,0 +1,49 @@
+@startuml Username Update Flow
+
+skinparam monochrome false
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam backgroundColor white
+skinparam handwritten false
+
+actor User
+participant "Frontend\nUserSettingsPanel" as Frontend
+participant "UserController" as Controller
+participant "UserService" as UserService
+participant "UserRepository" as Repository
+participant "WebSocket\nHandler" as WSHandler
+participant "Database" as DB
+collections "Connected\nClients" as Clients
+
+== User Initiated Update ==
+User -> Frontend: Change display name
+Frontend -> Controller: PUT /api/users/{userId}
+note right: Request body:\n{ username: string }
+
+Controller -> UserService: updateUser(userId, username)
+UserService -> Repository: findByUserId(userId)
+Repository -> DB: SELECT * FROM users
+DB --> Repository: User record
+Repository --> UserService: User entity
+
+UserService -> Repository: save(user)
+Repository -> DB: UPDATE users SET username = ?
+DB --> Repository: Updated record
+Repository --> UserService: Updated user
+
+UserService -> WSHandler: Emit USER_UPDATE event
+note right: WebSocketEventDto:\n- type: USER_UPDATE\n- userId\n- timestamp\n- payload: { username }
+
+WSHandler -> Clients: Broadcast to /topic/users
+note right: All clients update their local state\nwith the new username for the user
+
+== Components Affected ==
+note over Clients
+  Components that need to update:
+  - UserList (sidebar)
+  - MessageList (username in messages)
+  - ChannelList (channel creator names)
+  - Reactions (usernames on reactions)
+end note
+
+@enduml 

@@ -18,7 +18,6 @@ function AuthLayout() {
         </div>
     );
 }
-
 function App() {
     return (
         <div className="relative min-h-screen bg-[var(--terminal-black)]">
@@ -61,3 +60,4 @@ function App() {
 }
 
 export default App;
+

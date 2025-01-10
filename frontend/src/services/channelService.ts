@@ -1,5 +1,5 @@
 import api from './api';
-import { Channel, CreateChannelRequest } from '../types';
+import { Channel, CreateChannelRequest } from '../types/index';
 
 interface PageResponse<T> {
     content: T[];

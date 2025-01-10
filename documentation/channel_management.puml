@@ -7,16 +7,19 @@ actor "Authenticated User" as User
 participant "Frontend" as FE
 participant "ChannelController" as CC
 participant "ChannelService" as CS
+participant "WebSocketService" as WS
 database "Database" as DB
 
 == Channel Creation ==
 User -> FE: Create Channel
 FE -> CC: POST /api/channels
 CC -> CS: createChannel()
+activate CS
 CS -> DB: Save Channel
 DB --> CS: Channel Created
-CS --> CC: ChannelDto
-CC --> FE: Channel Details
+CS -> WS: broadcastChannelCreated()
+deactivate CS
+WS --> FE: Channel Created Event
 FE --> User: Channel Created
 
 == Direct Message Channel ==
@@ -60,10 +63,12 @@ FE --> User: Display Channels
 User -> FE: Delete Channel
 FE -> CC: DELETE /api/channels/{id}
 CC -> CS: deleteChannel()
+activate CS
 CS -> DB: Delete Channel
 DB --> CS: Deleted
-CS --> CC: Success
-CC --> FE: Channel Deleted
+CS -> WS: broadcastChannelDeleted()
+deactivate CS
+WS --> FE: Channel Deleted Event
 FE --> User: Confirmation
 
 @enduml 

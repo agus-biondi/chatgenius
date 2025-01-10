@@ -41,8 +41,8 @@ export interface Reaction {
     emoji: string;
     userId: string;
     username: string;
+    messageId: string;
     createdAt: string;
-    messageId: string | { toString(): string };
 }
 
 export interface File {
@@ -55,7 +55,6 @@ export interface File {
     uploadedAt: string;
 }
 
-// Request Types
 export interface CreateChannelRequest {
     name: string;
     isDirectMessage?: boolean;
@@ -78,19 +77,11 @@ export interface CreateUserRequest {
     email: string;
 }
 
-export type WebSocketEventType =
-    | 'MESSAGE_NEW'
-    | 'MESSAGE_EDIT'
-    | 'MESSAGE_DELETE'
-    | 'REACTION_ADD'
-    | 'REACTION_REMOVE'
-    | 'CHANNEL_UPDATE'
-    | 'NOTIFICATION';
 
 export interface WebSocketEvent {
     type: WebSocketEventType;
-    channelId: string;
-    messageId: string;
+    channelId?: string;
+    messageId?: string;
     entityId?: string;  // reactionId, userId, etc.
     userId: string;
     timestamp: string;
@@ -98,6 +89,18 @@ export interface WebSocketEvent {
         message?: Message;
         reaction?: Reaction;
         emoji?: string;
+        username?: string;  // For USER_UPDATE events
         [key: string]: any;
-    };
-} 
+    }
+}
+
+export type WebSocketEventType = 
+    | 'MESSAGE_NEW'
+    | 'MESSAGE_EDIT'
+    | 'MESSAGE_DELETE'
+    | 'REACTION_ADD'
+    | 'REACTION_REMOVE'
+    | 'CHANNEL_UPDATE'
+    | 'USER_UPDATE'
+    | 'NOTIFICATION';
+

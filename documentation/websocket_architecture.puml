@@ -1,0 +1,81 @@
+@startuml websocket_architecture
+
+' Use modern style
+skinparam monochrome false
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam backgroundColor white
+skinparam handwritten false
+
+' Components
+rectangle "Frontend (React)" {
+    [WebSocket Client] as WSC
+    [Message Handler] as MH
+    [React Components] as RC
+    [State Management] as SM
+}
+
+rectangle "Backend (Spring Boot)" {
+    [STOMP Handler] as SH
+    [WebSocket Controller] as WSController
+    [Message Service] as MS
+    [Reaction Service] as RS
+}
+
+database "PostgreSQL" as DB
+
+' WebSocket Event Types
+note right of WSC
+  Event Types:
+  - MESSAGE_NEW
+  - MESSAGE_EDIT
+  - MESSAGE_DELETE
+  - REACTION_ADD
+  - REACTION_REMOVE
+  - CHANNEL_UPDATE
+  - NOTIFICATION
+end note
+
+' Event Payload Structure
+note right of SH
+  WebSocketEventDto:
+  - type: EventType
+  - channelId: UUID
+  - messageId: UUID
+  - entityId: UUID
+  - userId: String
+  - timestamp: DateTime
+  - payload: Map<String, Object>
+end note
+
+' Connections
+WSC --> SH : STOMP over WebSocket
+SH --> WSController : Routes Events
+WSController --> MS : Message Operations
+WSController --> RS : Reaction Operations
+MS --> DB : Persistence
+RS --> DB : Persistence
+
+MH --> WSC : Subscribe to Topics
+RC --> MH : Handle Events
+MH --> SM : Update State
+
+' Topics
+note bottom of SH
+  Topics:
+  - /topic/channel/{channelId} (messages & reactions)
+  - /topic/user/{userId}/notifications (personal notifications)
+end note
+
+' Notification Strategy
+note right of WSController
+  Notification Rules:
+  1. Channel messages:
+     - Only notify channel members
+     - Skip users viewing the channel
+  2. Direct messages:
+     - Only notify the recipient
+     - Skip if recipient is viewing the chat
+end note
+
+@enduml 

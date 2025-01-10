@@ -6,6 +6,7 @@ import com.gauntletai.agustinbiondi.chatgenius.model.User;
 import com.gauntletai.agustinbiondi.chatgenius.service.ChannelService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/channels")
 @RequiredArgsConstructor
@@ -22,14 +24,10 @@ public class ChannelController {
     private final ChannelService channelService;
 
     @PostMapping
-    public ResponseEntity<ChannelDto> createChannel(
-        @Valid @RequestBody CreateChannelRequest request,
-        @AuthenticationPrincipal User user
-    ) {
-        System.out.println("POST /api/channels - Creating channel. userId=" + user.getUserId() + ", request=" + request);
-        ChannelDto response = channelService.createChannel(user.getUserId(), request);
-        System.out.println("POST /api/channels - Channel created. response=" + response);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public ChannelDto createChannel(@AuthenticationPrincipal User user, @Valid @RequestBody CreateChannelRequest request) {
+        log.info("Creating channel with name: {}, creator: {}", request.getName(), user.getUserId());
+        return channelService.createChannel(user.getUserId(), request);
     }
 
     @PostMapping("/dm/{otherUserId}")

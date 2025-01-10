@@ -76,6 +76,50 @@ POST /api/admin/mute/{userId} (Admin)
 POST /api/admin/unmute/{userId} (Admin)
 DELETE /api/admin/messages/{id} (Admin)
 DELETE /api/admin/channels/{id} (Admin)
+
+WebSocket Architecture
+
+Event System
+The application uses STOMP over WebSocket for real-time communication. All real-time events follow a unified structure using WebSocketEventDto:
+
+Event Types:
+- MESSAGE_NEW: New message created
+- MESSAGE_EDIT: Message content updated
+- MESSAGE_DELETE: Message deleted
+- REACTION_ADD: Emoji reaction added
+- REACTION_REMOVE: Emoji reaction removed
+- CHANNEL_UPDATE: Channel details changed
+- NOTIFICATION: System notifications
+
+Event Structure:
+```typescript
+interface WebSocketEvent {
+    type: WebSocketEventType;
+    channelId: string;
+    messageId: string;
+    entityId?: string;  // reactionId, userId, etc.
+    userId: string;
+    timestamp: string;
+    payload?: {
+        message?: Message;
+        reaction?: Reaction;
+        emoji?: string;
+        [key: string]: any;
+    };
+}
+```
+
+WebSocket Topics:
+- /topic/channel/{channelId}: Channel-specific events (messages, reactions)
+- /topic/notifications: System-wide notifications
+
+Real-time Features:
+- Instant message delivery
+- Live reaction updates
+- Message editing and deletion notifications
+- Typing indicators (planned)
+- Presence updates (planned)
+
 Key Components
 
 Authentication Pages

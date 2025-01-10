@@ -22,6 +22,9 @@ public class WebSocketEventDto {
         // Channel events
         CHANNEL_UPDATE,
         
+        // User events
+        USER_UPDATE,
+        
         // Light notifications
         NOTIFICATION  // For unread indicators, etc.
     }

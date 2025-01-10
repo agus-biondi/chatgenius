@@ -67,7 +67,7 @@ public class ClerkWebhookController {
     }
 
     private void handleUserUpdated(JsonNode data) {
-        userService.updateUser(
+        userService.updateUserFromClerk(
             data.get("id").asText(),
             data.path("email_addresses").get(0).path("email_address").asText(),
             data.path("username").asText(data.path("email_addresses").get(0).path("email_address").asText())
