@@ -1,0 +1,51 @@
+@startuml
+participant Client
+participant "WebSocket Endpoint (/ws)" as WS
+participant "ClerkHandshakeInterceptor" as HandshakeInterceptor
+participant "ClerkTokenValidator" as TokenValidator
+participant "ClerkChannelInterceptor" as ChannelInterceptor
+participant "WebSocketController" as Controller
+participant "MessageService" as MessageService
+participant "MessageRepository" as MessageRepo
+participant "UserRepository" as UserRepo
+participant "ChannelRepository" as ChannelRepo
+participant "SimpMessagingTemplate" as MessagingTemplate
+
+== Establishing WebSocket Connection ==
+Client -> WS: Connect to /ws with Authorization: Bearer {token}
+WS -> HandshakeInterceptor: beforeHandshake(request)
+HandshakeInterceptor -> TokenValidator: validate(token)
+TokenValidator --> HandshakeInterceptor: userId / success
+HandshakeInterceptor --> WS: allow handshake, store userId in session
+WS --> Client: Handshake success (101 Switching Protocols)
+
+== STOMP Connection ==
+Client -> WS: STOMP CONNECT with Authorization header
+WS -> ChannelInterceptor: preSend(CONNECT frame)
+ChannelInterceptor -> UserRepo: findById(userId)
+UserRepo --> ChannelInterceptor: User entity
+ChannelInterceptor -> ChannelInterceptor: create Authentication
+ChannelInterceptor --> WS: set Authentication in SecurityContext
+WS --> Client: STOMP CONNECTED
+
+== Subscribing to a Channel ==
+Client -> WS: STOMP SUBSCRIBE to /topic/channels/{channelId}
+WS -> ChannelInterceptor: preSend(SUBSCRIBE frame)
+ChannelInterceptor -> UserRepo: (optional) verify channel membership
+ChannelInterceptor --> WS: allow subscription
+WS --> Client: SUBSCRIBE ACK
+
+== Sending a Message ==
+Client -> WS: STOMP SEND to /app/channels/{channelId}/messages\nPayload: {messageDto}
+WS -> ChannelInterceptor: preSend(SEND frame)
+ChannelInterceptor --> WS: allow send
+WS -> Controller: handleMessage(channelId, messageDto, Principal)
+Controller -> MessageService: processMessage(messageDto, channelId, userId)
+MessageService -> UserRepo: findById(userId)
+MessageService -> ChannelRepo: findById(channelId)
+MessageService -> MessageRepo: save(message)
+MessageRepo --> MessageService: savedMessage
+MessageService -> MessagingTemplate: convertAndSend(/topic/channels/{channelId}, savedMessageDto)
+MessagingTemplate --> MessageService: success
+MessageService --> Controller: savedMessageDto
+Controller --> WS: Broadcast

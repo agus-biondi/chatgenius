@@ -14,6 +14,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
+@Builder
+@AllArgsConstructor
 @ToString(exclude = {"user", "channel"})
 @EqualsAndHashCode(of = "id")
 public class ChannelMembership {
@@ -30,6 +32,9 @@ public class ChannelMembership {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "channel_id", nullable = false)
     private Channel channel;
+
+    @Column(name = "last_read_at")
+    private LocalDateTime lastReadAt;
 
     @CreationTimestamp
     @Column(name = "joined_at", nullable = false, updatable = false)

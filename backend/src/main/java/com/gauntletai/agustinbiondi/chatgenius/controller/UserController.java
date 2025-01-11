@@ -1,39 +1,64 @@
 package com.gauntletai.agustinbiondi.chatgenius.controller;
 
-import com.gauntletai.agustinbiondi.chatgenius.dto.UserDto;
-import com.gauntletai.agustinbiondi.chatgenius.dto.UpdateUserRequest;
+import com.gauntletai.agustinbiondi.chatgenius.dto.UserDTO;
 import com.gauntletai.agustinbiondi.chatgenius.service.UserService;
-import com.gauntletai.agustinbiondi.chatgenius.model.User;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
+
     private final UserService userService;
 
-    @GetMapping("/active")
-    public List<UserDto> getActiveUsers() {
-        return userService.getActiveUsers();
+    @GetMapping("/exists/{userId}")
+    public ResponseEntity<Boolean> checkUserExists(@PathVariable String userId) {
+        return ResponseEntity.ok(userService.userExists(userId));
     }
 
-    @PutMapping("/{userId}")
-    public ResponseEntity<UserDto> updateUser(
-        @PathVariable String userId,
-        @RequestBody UpdateUserRequest request,
-        @AuthenticationPrincipal User currentUser
-    ) {
-        // Only allow users to update their own username
-        if (!currentUser.getUserId().equals(userId)) {
-            return ResponseEntity.status(403).build();
-        }
+    @GetMapping("/username/{username}")
+    public ResponseEntity<UserDTO> findByUsername(@PathVariable String username) {
+        return userService.findByUsername(username)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
-        UserDto updatedUser = userService.updateUser(userId, request);
-        return ResponseEntity.ok(updatedUser);
+    @GetMapping("/email/{email}")
+    public ResponseEntity<UserDTO> findByEmail(@PathVariable String email) {
+        return userService.findByEmail(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserDTO> findById(@PathVariable String userId) {
+        return userService.findById(userId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserDTO>> findAll() {
+        return ResponseEntity.ok(userService.findAll());
+    }
+
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteUser(@PathVariable String userId) {
+        try {
+            userService.deleteUser(userId);
+            return ResponseEntity.ok().build();
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 } 

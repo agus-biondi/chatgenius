@@ -44,8 +44,7 @@ public class ClerkWebhookController {
                     handleUserCreated(data);
                     break;
                 case "user.updated":
-                    handleUserUpdated(data);
-                    break;
+                    throw new UnsupportedOperationException("User updated is not supported");
                 case "user.deleted":
                     handleUserDeleted(data);
                     break;
@@ -60,14 +59,6 @@ public class ClerkWebhookController {
 
     private void handleUserCreated(JsonNode data) {
         userService.createUser(
-            data.get("id").asText(),
-            data.path("email_addresses").get(0).path("email_address").asText(),
-            data.path("username").asText(data.path("email_addresses").get(0).path("email_address").asText())
-        );
-    }
-
-    private void handleUserUpdated(JsonNode data) {
-        userService.updateUserFromClerk(
             data.get("id").asText(),
             data.path("email_addresses").get(0).path("email_address").asText(),
             data.path("username").asText(data.path("email_addresses").get(0).path("email_address").asText())

@@ -1,0 +1,145 @@
+2025-01-11 02:03:11 [main] INFO  c.g.a.chatgenius.Application - Starting Application using Java 21.0.3 with PID 22948 (C:\Users\Agustin\Gauntlet\ChatGenius2\backend\build\classes\java\main started by Agustin in C:\Users\Agustin\Gauntlet\ChatGenius2)
+2025-01-11 02:03:11 [main] DEBUG c.g.a.chatgenius.Application - Running with Spring Boot v3.2.2, Spring v6.1.3
+2025-01-11 02:03:11 [main] INFO  c.g.a.chatgenius.Application - The following 1 profile is active: "dev"
+2025-01-11 02:03:14 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-01-11 02:03:14 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 288 ms. Found 3 JPA repository interfaces.
+2025-01-11 02:03:16 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2025-01-11 02:03:16 [main] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2025-01-11 02:03:16 [main] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.18]
+2025-01-11 02:03:16 [main] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-01-11 02:03:16 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 4497 ms
+2025-01-11 02:03:16 [main] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-01-11 02:03:16 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.4.1.Final
+2025-01-11 02:03:17 [main] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-01-11 02:03:17 [main] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-01-11 02:03:17 [main] WARN  org.hibernate.orm.deprecation - HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-01-11 02:03:19 [main] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-01-11 02:03:19 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-01-11 02:03:19 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@8ab231
+2025-01-11 02:03:19 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-01-11 02:03:19 [main] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-01-11 02:03:20 [main] DEBUG c.g.a.c.security.ClerkAuthFilter - Filter 'clerkAuthFilter' configured for use
+2025-01-11 02:03:20 [main] DEBUG o.s.w.f.CommonsRequestLoggingFilter - Filter 'logFilter' configured for use
+2025-01-11 02:03:20 [main] DEBUG c.g.a.c.c.RequestLoggingConfig$1 - Filter 'corsLoggingFilter' configured for use
+2025-01-11 02:03:21 [main] WARN  o.s.b.a.s.s.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 51925eac-e521-47be-aa89-1b38266e3a1b
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.s.s.WebSocketHandlerMapping - Patterns [/ws/**] in 'stompWebSocketHandlerMapping'
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - 11 mappings in 'requestMappingHandlerMapping'
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.h.SimpleUrlHandlerMapping - Patterns [/webjars/**, /**] in 'resourceHandlerMapping'
+2025-01-11 02:03:21 [main] INFO  o.s.s.web.DefaultSecurityFilterChain - Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@59f56892, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@389fad5b, org.springframework.security.web.context.SecurityContextHolderFilter@28a33dc9, org.springframework.security.web.header.HeaderWriterFilter@1dcf5f38, org.springframework.web.filter.CorsFilter@5d72da0b, org.springframework.security.web.csrf.CsrfFilter@1d397e87, org.springframework.security.web.authentication.logout.LogoutFilter@2044f708, com.gauntletai.agustinbiondi.chatgenius.security.ClerkAuthFilter@7a482b3a, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@32db94fb, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@6278371a, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@285b63eb, org.springframework.security.web.session.SessionManagementFilter@1407b93f, org.springframework.security.web.access.ExceptionTranslationFilter@68a7bc12, org.springframework.security.web.access.intercept.AuthorizationFilter@240c626d]
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.WebSocketAnnotationMethodMessageHandler - 
+	c.g.a.c.c.ChannelController:
+	
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.WebSocketAnnotationMethodMessageHandler - 
+	c.g.a.c.c.ClerkWebhookController:
+	
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.WebSocketAnnotationMethodMessageHandler - 
+	c.g.a.c.c.DevUserController:
+	
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.WebSocketAnnotationMethodMessageHandler - 
+	c.g.a.c.c.UserController:
+	
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.WebSocketAnnotationMethodMessageHandler - 
+	c.g.a.c.c.WebSocketController:
+	{[MESSAGE],[/channels/{channelId}/messages]}: handleMessage(UUID,MessageDTO,Principal)
+	{[MESSAGE],[/channels/{channelId}/typing]}: handleTypingEvent(UUID,Principal)
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.WebSocketAnnotationMethodMessageHandler - 
+	o.s.b.a.w.s.e.BasicErrorController:
+	
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerAdapter - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2025-01-11 02:03:21 [main] DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - ControllerAdvice beans: 0 @ExceptionHandler, 1 ResponseBodyAdvice
+2025-01-11 02:03:22 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path ''
+2025-01-11 02:03:22 [main] DEBUG org.springframework.web.SimpLogging - clientOutboundChannel added SubProtocolWebSocketHandler[StompSubProtocolHandler[v10.stomp, v11.stomp, v12.stomp]]
+2025-01-11 02:03:22 [main] DEBUG org.springframework.web.SimpLogging - clientInboundChannel added WebSocketAnnotationMethodMessageHandler[prefixes=[/app/]]
+2025-01-11 02:03:22 [main] INFO  o.s.m.s.b.SimpleBrokerMessageHandler - Starting...
+2025-01-11 02:03:22 [main] DEBUG org.springframework.web.SimpLogging - clientInboundChannel added SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@5e8f0c54]
+2025-01-11 02:03:22 [main] DEBUG org.springframework.web.SimpLogging - brokerChannel added SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@5e8f0c54]
+2025-01-11 02:03:22 [main] INFO  o.s.m.s.b.SimpleBrokerMessageHandler - BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@5e8f0c54]]
+2025-01-11 02:03:22 [main] INFO  o.s.m.s.b.SimpleBrokerMessageHandler - Started.
+2025-01-11 02:03:22 [main] DEBUG org.springframework.web.SimpLogging - clientInboundChannel added UserDestinationMessageHandler[DefaultUserDestinationResolver[prefix=/user/]]
+2025-01-11 02:03:22 [main] DEBUG org.springframework.web.SimpLogging - brokerChannel added UserDestinationMessageHandler[DefaultUserDestinationResolver[prefix=/user/]]
+2025-01-11 02:03:22 [main] INFO  c.g.a.chatgenius.Application - Started Application in 11.619 seconds (process running for 12.461)
+2025-01-11 02:03:36 [http-nio-8080-exec-3] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-01-11 02:03:36 [http-nio-8080-exec-3] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2025-01-11 02:03:36 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Detected StandardServletMultipartResolver
+2025-01-11 02:03:36 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Detected AcceptHeaderLocaleResolver
+2025-01-11 02:03:36 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Detected FixedThemeResolver
+2025-01-11 02:03:36 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.view.DefaultRequestToViewNameTranslator@116fe252
+2025-01-11 02:03:36 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Detected org.springframework.web.servlet.support.SessionFlashMapManager@8a0a1d1
+2025-01-11 02:03:36 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - enableLoggingRequestDetails='true': request parameters and headers will be shown which may lead to unsafe logging of potentially sensitive data
+2025-01-11 02:03:36 [http-nio-8080-exec-3] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 8 ms
+2025-01-11 02:03:36 [http-nio-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/channels
+2025-01-11 02:03:36 [http-nio-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/users
+2025-01-11 02:03:36 [http-nio-8080-exec-1] INFO  c.g.a.c.security.ClerkAuthFilter - Processing request: GET /api/users
+2025-01-11 02:03:36 [http-nio-8080-exec-3] INFO  c.g.a.c.security.ClerkAuthFilter - Processing request: GET /api/channels
+2025-01-11 02:03:36 [http-nio-8080-exec-1] DEBUG c.g.a.c.security.ClerkAuthFilter - Found bearer token in request
+2025-01-11 02:03:36 [http-nio-8080-exec-3] DEBUG c.g.a.c.security.ClerkAuthFilter - Found bearer token in request
+2025-01-11 02:03:37 [http-nio-8080-exec-3] DEBUG c.g.a.c.security.ClerkAuthFilter - Token verified for Clerk user ID: user_2rMjbsf5HEAsTOk08nq01mt3exa
+2025-01-11 02:03:37 [http-nio-8080-exec-1] DEBUG c.g.a.c.security.ClerkAuthFilter - Token verified for Clerk user ID: user_2rMjbsf5HEAsTOk08nq01mt3exa
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG org.hibernate.SQL - 
+    select
+        u1_0.user_id,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.role,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.user_id=?
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG org.hibernate.SQL - 
+    select
+        u1_0.user_id,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.role,
+        u1_0.username 
+    from
+        users u1_0 
+    where
+        u1_0.user_id=?
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG c.g.a.c.security.ClerkAuthFilter - Setting authentication for user user_2rMjbsf5HEAsTOk08nq01mt3exa with role ADMIN
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG c.g.a.c.security.ClerkAuthFilter - Setting authentication for user user_2rMjbsf5HEAsTOk08nq01mt3exa with role ADMIN
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG c.g.a.c.security.ClerkAuthFilter - Proceeding with filter chain for GET /api/channels
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG c.g.a.c.security.ClerkAuthFilter - Proceeding with filter chain for GET /api/users
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/channels
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/users
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG o.s.w.f.CommonsRequestLoggingFilter - Before request [GET /api/channels]
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG o.s.w.f.CommonsRequestLoggingFilter - Before request [GET /api/users]
+2025-01-11 02:03:38 [http-nio-8080-exec-1] INFO  c.g.a.c.config.RequestLoggingConfig - CORS request: GET /api/users - Origin: http://localhost:5173
+2025-01-11 02:03:38 [http-nio-8080-exec-3] INFO  c.g.a.c.config.RequestLoggingConfig - CORS request: GET /api/channels - Origin: http://localhost:5173
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/channels", parameters={}
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - GET "/api/users", parameters={}
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.gauntletai.agustinbiondi.chatgenius.controller.ChannelController#getChannels()
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.gauntletai.agustinbiondi.chatgenius.controller.UserController#findAll()
+2025-01-11 02:03:38 [http-nio-8080-exec-1] INFO  c.g.a.c.a.ControllerLoggingAspect - Request received - User: user_2rMjbsf5HEAsTOk08nq01mt3exa, Method: GET , Controller: UserController.findAll
+2025-01-11 02:03:38 [http-nio-8080-exec-3] INFO  c.g.a.c.a.ControllerLoggingAspect - Request received - User: user_2rMjbsf5HEAsTOk08nq01mt3exa, Method: GET , Controller: ChannelController.getChannels
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG c.g.a.c.a.ControllerLoggingAspect - Method arguments: []
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG c.g.a.c.a.ControllerLoggingAspect - Method arguments: []
+2025-01-11 02:03:38 [http-nio-8080-exec-3] INFO  c.g.a.c.controller.ChannelController - GET /api/channels endpoint hit
+2025-01-11 02:03:38 [http-nio-8080-exec-3] INFO  c.g.a.c.a.ControllerLoggingAspect - Request completed - User: user_2rMjbsf5HEAsTOk08nq01mt3exa, Method: GET , Duration: 3ms
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG c.g.a.c.a.ControllerLoggingAspect - Response: <200 OK OK,[]>
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json]
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Nothing to write: null body
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2025-01-11 02:03:38 [http-nio-8080-exec-3] DEBUG o.s.w.f.CommonsRequestLoggingFilter - REQUEST DATA: GET /api/channels]
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG org.hibernate.SQL - 
+    select
+        u1_0.user_id,
+        u1_0.created_at,
+        u1_0.email,
+        u1_0.role,
+        u1_0.username 
+    from
+        users u1_0
+2025-01-11 02:03:38 [http-nio-8080-exec-1] INFO  c.g.a.c.a.ControllerLoggingAspect - Request completed - User: user_2rMjbsf5HEAsTOk08nq01mt3exa, Method: GET , Duration: 229ms
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG c.g.a.c.a.ControllerLoggingAspect - Response: <200 OK OK,[UserDTO(userId=user_2rMjbsf5HEAsTOk08nq01mt3exa, username=agustin.biondi, email=agustin.biondi@gmail.com, role=ADMIN, createdAt=2025-01-11T06:21:09.931465Z)],[]>
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [application/json, application/*+json]
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing [[UserDTO(userId=user_2rMjbsf5HEAsTOk08nq01mt3exa, username=agustin.biondi, email=agustin.biondi@gmai (truncated)...]
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2025-01-11 02:03:38 [http-nio-8080-exec-1] DEBUG o.s.w.f.CommonsRequestLoggingFilter - REQUEST DATA: GET /api/users]
+2025-01-11 02:04:21 [MessageBroker-1] INFO  o.s.w.s.c.WebSocketMessageBrokerStats - WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 1, active threads = 1, queued tasks = 0, completed tasks = 0]

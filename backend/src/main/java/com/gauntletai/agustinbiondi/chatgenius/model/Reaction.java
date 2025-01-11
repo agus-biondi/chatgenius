@@ -2,17 +2,21 @@ package com.gauntletai.agustinbiondi.chatgenius.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
-
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "reactions")
+@Table(name = "reactions",
+       uniqueConstraints = @UniqueConstraint(
+           name = "uk_reactions_message_user_emoji",
+           columnNames = {"message_id", "user_id", "emoji"}
+       ))
 @Getter
 @Setter
 @NoArgsConstructor
+@Builder
+@AllArgsConstructor
 @ToString(exclude = {"user", "message"})
 @EqualsAndHashCode(of = "id")
 public class Reaction {
@@ -33,7 +37,6 @@ public class Reaction {
     @JoinColumn(name = "message_id", nullable = false)
     private Message message;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private Instant createdAt;
 } 

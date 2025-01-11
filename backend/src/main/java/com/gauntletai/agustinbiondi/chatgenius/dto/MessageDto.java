@@ -1,20 +1,38 @@
 package com.gauntletai.agustinbiondi.chatgenius.dto;
 
-import lombok.Data;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
-@Data
-public class MessageDto {
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class MessageDTO {
     private UUID id;
+
+    @NotBlank(message = "Message content cannot be empty")
+    @Size(max = 10000, message = "Message content cannot exceed 10000 characters")
     private String content;
+
+    @NotNull(message = "Created by user ID cannot be null")
+    private String createdBy;
+
+    @NotNull(message = "Channel ID cannot be null")
     private UUID channelId;
-    private String createdById;
-    private String createdByUsername;
-    private LocalDateTime createdAt;
-    private UUID parentMessageId;
-    private int replyCount;
-    private List<ReactionDto> reactions;
+
+    private UUID parentId;
+
+    private Instant createdAt;
+
+    private Instant editedAt;
+
+    private boolean isEdited;
 } 

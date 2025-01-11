@@ -5,7 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -14,14 +14,22 @@ import java.util.UUID;
 @Table(name = "messages",
        indexes = {
            @Index(name = "idx_messages_channel_created", columnList = "channel_id,created_at"),
-           @Index(name = "idx_messages_parent", columnList = "parent_message_id")
+           @Index(name = "idx_messages_parent", columnList = "parent_id")
        })
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = {"createdBy", "channel", "parentMessage", "replies", "reactions"})
+@Builder
+@AllArgsConstructor
+@ToString(exclude = {"createdBy", "channel", "reactions"})
 @EqualsAndHashCode(of = "id")
 public class Message {
+    public enum Type {
+        TEXT,           // Regular text message
+        SYSTEM,         // System notification (user joined, etc.)
+        FILE            // File attachment message
+    }
+
     @Id
     @GeneratedValue
     @UuidGenerator
@@ -30,6 +38,11 @@ public class Message {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private Type type = Type.TEXT;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false, columnDefinition = "VARCHAR(255)")
@@ -40,16 +53,27 @@ public class Message {
     private Channel channel;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_message_id")
-    private Message parentMessage;
-
-    @OneToMany(mappedBy = "parentMessage", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Message> replies = new HashSet<>();
+    @JoinColumn(name = "parent_id")
+    private Message parent;
 
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private Set<Reaction> reactions = new HashSet<>();
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private Instant createdAt;
+
+    @Column(name = "edited_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private Instant editedAt;
+
+    @Column(name = "is_edited")
+    @Builder.Default
+    private boolean isEdited = false;
+
+    /**
+     * Thread structure:
+     * - If message is not in a thread: parent = null
+     * - If message is a reply: parent points to the thread's root message
+     */
 } 

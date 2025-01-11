@@ -1,72 +1,47 @@
+// src/services/userService.ts
+import { useQuery } from '@tanstack/react-query';
 import apiClient from './apiClient';
-import type { UserResource } from '@clerk/types';
-import type { User } from '../types';
+import { logger } from '../utils/logger';
 
-interface UserResponse {
-  userId: string;
-  email: string;
+export interface User {
+  id: string;
   username: string;
-  role: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const userService = {
-  // Only called after successful Clerk signup in development
-  handleNewUserSignup: async (userId: string) => {
-    if (import.meta.env.DEV && userId) {
-      try {
-        const response = await apiClient.post<UserResponse>('/users/dev/sync', {
-          id: userId
-        });
-        return response.data;
-      } catch (error) {
-        console.error('Failed to sync new user with backend:', error);
-      }
-    }
-  },
-
-  syncUserWithBackend: async (user: UserResource) => {
-    if (import.meta.env.DEV && user) {
-      try {
-        const response = await apiClient.post<UserResponse>('/users/dev/sync', {
-          id: user.id,
-          email: user.primaryEmailAddress?.emailAddress
-        });
-        return response.data;
-      } catch (error: any) {
-        throw error;
-      }
-    }
-  },
-
-  getUserById: async (userId: string): Promise<User> => {
+  handleNewUserSignup: async (userId: string, email: string) => {
+    logger.debug('api', 'Syncing new user with backend:', { userId, email });
     try {
-      const response = await apiClient.get<User>(`/users/${userId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch user:', error);
-      throw error;
-    }
-  },
-
-  updateUsername: async (userId: string, username: string) => {
-    try {
-      const response = await apiClient.put<UserResponse>(`/users/${userId}`, {
-        username
+      const response = await apiClient.post('/users/dev/sync', {
+        id: userId,
+        email
       });
-      return response.data;
+      if (!response.data) {
+        throw new Error('Failed to create user on the backend');
+      }
+      logger.debug('api', 'Successfully synced user with backend');
     } catch (error) {
-      console.error('Failed to update username:', error);
+      logger.error('api', 'Error in handleNewUserSignup:', error);
       throw error;
     }
   },
+};
 
-  getActiveUsers: async (): Promise<User[]> => {
-    try {
-      const response = await apiClient.get<User[]>('/users/active');
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch active users:', error);
-      throw error;
-    }
-  }
-}; 
+export const fetchUsers = async (): Promise<User[]> => {
+  logger.debug('api', 'Fetching users');
+  const response = await apiClient.get('/users');
+  return response.data;
+};
+
+export const useUsers = () => {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+  });
+};
+  

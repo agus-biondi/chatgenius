@@ -1,44 +1,29 @@
-import api from './api';
-import { Message, CreateMessageRequest } from '../types';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from './apiClient';
+import { User } from './userService';
+import { logger } from '../utils/logger';
 
-interface PageResponse<T> {
-    content: T[];
-    totalPages: number;
-    totalElements: number;
+export interface Message {
+  id: string;
+  content: string;
+  channelId: string;
+  user: User;
+  createdAt: string;
+  updatedAt: string;
 }
 
+export const fetchMessages = async (channelId: string): Promise<Message[]> => {
+  logger.debug('api', `Fetching messages for channel ${channelId}`);
+  const response = await apiClient.get(`/channels/${channelId}/messages`);
+  return response.data;
+};
 
-export const messageService = {
-    async getChannelMessages(channelId: string, page = 0, size = 20) {
-        const response = await api.get<PageResponse<Message>>(`/messages/channel/${channelId}`, {
-            params: { page, size }
-        });
-        return response.data.content;
-    },
-
-    async createMessage(request: CreateMessageRequest) {
-        await api.post('/messages', request, {});
-    },
-
-    async getThreadMessages(parentMessageId: string, page = 0, size = 20) {
-        const response = await api.get<PageResponse<Message>>(`/messages/thread/${parentMessageId}`, {
-            params: { page, size }});
-        return response.data.content;
-    },
-
-    async updateMessage(messageId: string, request: CreateMessageRequest) {
-        const response = await api.put<Message>(`/messages/${messageId}`, request);
-        return response.data;
-    },
-
-    async deleteMessage(messageId: string) {
-        await api.delete(`/messages/${messageId}`);
-    },
-
-    async searchMessages(channelId: string, query: string, page = 0, size = 20) {
-        const response = await api.get<PageResponse<Message>>('/messages/search', {
-            params: { channelId, query, page, size }
-        });
-        return response.data.content;
-    }
+export const useMessages = (channelId: string) => {
+  return useQuery({
+    queryKey: ['messages', channelId],
+    queryFn: () => fetchMessages(channelId),
+    staleTime: 1000 * 5 * 60,
+    refetchOnWindowFocus: false,
+    enabled: !!channelId,
+  });
 }; 

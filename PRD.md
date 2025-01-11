@@ -1,192 +1,286 @@
-Project Overview
-Develop a real-time messaging application similar to Slack, enabling seamless communication and collaboration for teams. The MVP will support user authentication, real-time messaging, channel organization, file sharing, threaded conversations, and administrative controls using Spring Boot, React, Postgres, and Clerk for authentication. The application features a unique Unix-terminal inspired interface that provides a familiar environment for developers while maintaining modern usability.
+# ChatGenius: Terminal-Style Real-Time Messaging Platform
 
-User Roles & Core Workflows
+## Project Overview
+ChatGenius is a real-time messaging platform that combines the familiarity of Unix-like terminal commands with modern real-time messaging capabilities. The application emphasizes modularity, extensibility, and test-driven development to ensure robust feature development without compromising existing functionality.
 
-Admin
-Mute users to prevent message sending in channels.
-Admin
-Delete users' messages to maintain content quality.
-Admin
-Delete user-created channels to manage workspace structure.
-Regular User
-Authenticate securely to access the messaging platform.
-Regular User
-Send and receive real-time messages within channels.
-Regular User
-Create, join, and organize channels and direct messages.
-Regular User
-Share and search for files within channels.
-Regular User
-Participate in threaded conversations for organized discussions.
-Regular User
-React to messages with emojis for quick feedback.
-Technical Foundation
+## Core Features
 
-Data Models
+### Authentication & Security
+- Secure user authentication through Clerk integration
+- Role-based access control (Admin, Regular User)
+- Session management and token-based security
+- Real-time session tracking for presence management
 
-User
-id (UUID), username (String), email (String), role (Enum: ADMIN, USER), created_at (Timestamp)
-Relationships: One-to-Many with Message, One-to-Many with Channel (as creator)
-Channel
-id (UUID), name (String), is_direct_message (Boolean), created_by (UUID referencing User), created_at (Timestamp)
-Relationships: Many-to-Many with User through ChannelMembership, One-to-Many with Message
-ChannelMembership
-id (UUID), user_id (UUID referencing User), channel_id (UUID referencing Channel), joined_at (Timestamp)
-Relationships: Many-to-One with User, Many-to-One with Channel
-Message
-id (UUID), content (Text), created_by (UUID referencing User), channel_id (UUID referencing Channel), parent_message_id (UUID referencing Message, nullable), created_at (Timestamp)
-Relationships: Many-to-One with User, Many-to-One with Channel, Self-referential Many-to-One for threading
-Reaction
-id (UUID), emoji (String), user_id (UUID referencing User), message_id (UUID referencing Message), created_at (Timestamp)
-Relationships: Many-to-One with User, Many-to-One with Message
-File
-id (UUID), file_url (String), uploaded_by (UUID referencing User), channel_id (UUID referencing Channel), filename (String), uploaded_at (Timestamp)
-Relationships: Many-to-One with User, Many-to-One with Channel
-API Endpoints
+### User Management
+- User profile management with status text
+- Automatic presence tracking (Online, Offline, Away)
+- Activity-based status updates
+- User search and discovery
+- User preferences and settings
 
-User Routes
-GET /api/users (Admin)
-GET /api/users/{id} (Admin, Self)
-PUT /api/users/{id} (Admin, Self)
-DELETE /api/users/{id} (Admin)
-Channel Routes
-GET /api/channels (Authenticated)
-POST /api/channels (Authenticated)
-GET /api/channels/{id} (Channel Members)
-PUT /api/channels/{id} (Creator, Admin)
-DELETE /api/channels/{id} (Creator, Admin)
-Channel Membership Routes
-GET /api/channels/{id}/members (Channel Members)
-POST /api/channels/{id}/members (Creator, Admin)
-DELETE /api/channels/{id}/members/{userId} (Creator, Admin)
-Message Routes
-GET /api/channels/{channelId}/messages (Channel Members)
-POST /api/channels/{channelId}/messages (Channel Members)
-DELETE /api/messages/{id} (Creator, Admin)
-Reaction Routes
-POST /api/messages/{messageId}/reactions (Authenticated)
-DELETE /api/messages/{messageId}/reactions/{reactionId} (Reaction Owner)
-File Routes
-GET /api/channels/{channelId}/files (Channel Members)
-POST /api/channels/{channelId}/files (Channel Members)
-DELETE /api/files/{id} (Uploader, Admin)
-Admin Routes
-POST /api/admin/mute/{userId} (Admin)
-POST /api/admin/unmute/{userId} (Admin)
-DELETE /api/admin/messages/{id} (Admin)
-DELETE /api/admin/channels/{id} (Admin)
+### Channel System
+- Public and private channels
+- Direct messaging between users
+- Channel creation and deletion
+- Channel membership management
+- Channel search functionality
+- Channel-specific permissions
 
-WebSocket Architecture
+### Messaging System
+- Real-time message delivery
+- Message threading
+- Message reactions with emojis
+- File attachments
+- Message search across accessible channels
+- Message editing and deletion
+- Message history and pagination
 
-Event System
-The application uses STOMP over WebSocket for real-time communication. All real-time events follow a unified structure using WebSocketEventDto:
+### Terminal-Style Interface
+- Unix-like command structure
+- Channel navigation: `ls ./channels`
+- User listing: `ls ./users`
+- Channel creation: `mkdir #channel-name`
+- Direct message: `dm @username`
+- Message search: `grep "search term" ./channels/#general`
+- File operations: `cat`, `touch`, `rm`
 
-Event Types:
-- MESSAGE_NEW: New message created
-- MESSAGE_EDIT: Message content updated
-- MESSAGE_DELETE: Message deleted
-- REACTION_ADD: Emoji reaction added
-- REACTION_REMOVE: Emoji reaction removed
-- CHANNEL_UPDATE: Channel details changed
-- NOTIFICATION: System notifications
+## Technical Architecture
 
-Event Structure:
+### Data Models
+
+#### User
 ```typescript
-interface WebSocketEvent {
-    type: WebSocketEventType;
-    channelId: string;
-    messageId: string;
-    entityId?: string;  // reactionId, userId, etc.
-    userId: string;
-    timestamp: string;
-    payload?: {
-        message?: Message;
-        reaction?: Reaction;
-        emoji?: string;
-        [key: string]: any;
+interface User {
+    id: UUID;
+    username: string;
+    email: string;
+    role: Role;
+    status: {
+        text: string;
+        presence: PresenceStatus;
+        lastActive: DateTime;
+    };
+    preferences: UserPreferences;
+    createdAt: DateTime;
+}
+```
+
+#### Channel
+```typescript
+interface Channel {
+    id: UUID;
+    name: string;
+    type: ChannelType;
+    createdBy: UUID;
+    metadata: {
+        description: string;
+        isArchived: boolean;
+        permissions: ChannelPermissions;
+    };
+    createdAt: DateTime;
+}
+```
+
+#### Message
+```typescript
+interface Message {
+    id: UUID;
+    content: string;
+    channelId: UUID;
+    userId: UUID;
+    parentId?: UUID;
+    metadata: {
+        edited: boolean;
+        editedAt?: DateTime;
+        attachments: Attachment[];
+    };
+    createdAt: DateTime;
+}
+```
+
+#### Reaction
+```typescript
+interface Reaction {
+    id: UUID;
+    messageId: UUID;
+    userId: UUID;
+    emoji: string;
+    createdAt: DateTime;
+}
+```
+
+### API Structure
+
+#### Core Modules
+Each module is independent and follows clean architecture principles:
+- Authentication Module
+- User Management Module
+- Channel Management Module
+- Messaging Module
+- Search Module
+- File Management Module
+- Presence Module
+
+#### Module Structure
+Each module contains:
+- Controllers (REST endpoints)
+- Services (Business logic)
+- Repositories (Data access)
+- DTOs (Data transfer objects)
+- Domain Models
+- Unit Tests
+- Integration Tests
+
+### Real-Time Architecture
+
+#### Event System
+```typescript
+interface Event<T> {
+    type: EventType;
+    payload: T;
+    metadata: {
+        timestamp: DateTime;
+        userId: UUID;
+        correlationId: UUID;
     };
 }
 ```
 
-WebSocket Topics:
-- /topic/channel/{channelId}: Channel-specific events (messages, reactions)
-- /topic/notifications: System-wide notifications
+#### Event Types
+- USER_PRESENCE_CHANGED
+- MESSAGE_CREATED
+- MESSAGE_UPDATED
+- MESSAGE_DELETED
+- REACTION_ADDED
+- REACTION_REMOVED
+- CHANNEL_CREATED
+- CHANNEL_UPDATED
+- CHANNEL_DELETED
+- USER_TYPING
 
-Real-time Features:
-- Instant message delivery
-- Live reaction updates
-- Message editing and deletion notifications
-- Typing indicators (planned)
-- Presence updates (planned)
+### Testing Strategy
 
-Key Components
+#### Test Levels
+1. Unit Tests
+   - Service layer logic
+   - Domain model behavior
+   - Utility functions
 
-Authentication Pages
-LoginPage, RegisterPage
-Main Application Layout
-AppLayout with Sidebar, Header, MainContent
-ChannelList, UserList, SearchBar, UserProfile
-ChannelView with MessageList, MessageInput, ThreadView
-NotificationsPanel
-Admin Dashboard
-AdminPanel with UserManagement, ChannelManagement, ModerationTools
-UserList, ChannelList, MessageModeration
-Common Components
-Modal, Notification, FileUploader, ReactionButton, MessageItem
-MVP Launch Requirements
+2. Integration Tests
+   - API endpoints
+   - Database operations
+   - Event handling
 
-Implement user authentication and role-based authorization using Clerk and Spring Security.
-Develop API endpoints for user management, channel operations, messaging, reactions, and file sharing.
-Design and build the React frontend with core components including Sidebar, ChannelView, and AdminDashboard.
-Set up WebSocket connections for real-time messaging and notifications.
-Ensure secure file upload and retrieval with proper access controls.
-Enable admins to mute users, delete messages, and delete channels through the admin interface.
-Implement real-time updates for messages, reactions, and channel changes.
-Conduct thorough testing of authentication flows, permissions, and real-time features.
-Deploy the application with a scalable Postgres database and robust backend infrastructure.
+3. End-to-End Tests
+   - User workflows
+   - Real-time functionality
+   - UI interactions
 
-Design System & Interface Guidelines
+#### Test Coverage Requirements
+- Minimum 85% code coverage
+- 100% coverage for critical paths
+- All public APIs must be tested
+- Real-time events must have integration tests
 
-Color Palette
-- Primary Green (#6edb71): Used for active elements, prompts, and success states
-- Content Blue (#b8cceb): Main text content
-- Secondary Gray-Blue (#9ba8b9): Secondary text and inactive elements
-- Warning Red (#db6e7a): Destructive actions and warnings
-- Accent Blue (#6e8adb): Special elements and highlights
-- Terminal Black (#1a1b1e): Background
-- Terminal Gray (#2a2b2e): Secondary background and hover states
+## UI/UX Guidelines
 
-Terminal-Like Interface Elements
-- Command Prompts: Each major section starts with "$ command" (e.g., "$ ls ./channels/")
-- Action Buttons: Enclosed in square brackets (e.g., [enter], [esc], [mkdir])
-- Navigation: Uses Unix-like commands (cd, ls, mkdir, touch, rm)
-- Input Fields: Styled as terminal inputs with command context
-- Destructive Actions: Require explicit command confirmation (e.g., rm -rf)
+### Terminal Style
+- Dark theme with high contrast
+- Monospace fonts
+- Command-line prompts
+- Square bracket buttons
+- Unix-like error messages
 
-Command Patterns
-- Channel Navigation: "$ ls ./channels/" for listing channels
-- User Information: "$ whoami => username" in navbar
-- Channel Creation: "$ cd ./channels/" followed by "$ touch channel_name"
-- Channel Deletion: "$ rm -rf channel_name" with confirmation
-- Error Messages: Unix-style (e.g., "touch: cannot create channel 'name': File exists")
+### Command Patterns
+```bash
+# Channel Operations
+ls ./channels                 # List all channels
+cd ./channels/#general       # Enter channel
+mkdir #new-channel          # Create channel
+rm -rf #channel-name        # Delete channel
 
-Interactive Elements
-- Buttons: Use square brackets with hover states
-- Inputs: Terminal-style with focused border in primary green
-- Modals: Terminal window styling with command sequence context
-- Confirmations: Require exact command retyping for destructive actions
+# User Operations
+ls ./users                  # List all users
+whoami                      # Current user info
+status "Away for lunch"     # Set status
+dm @username               # Start DM
 
-Channel Organization
-- Channels are treated as files/directories in a Unix-like system
-- Hierarchical navigation using cd and ls commands
-- Direct messages treated as private channels
+# Message Operations
+grep "search" ./channels    # Search messages
+cat message-id             # View message details
+react message-id :emoji:   # Add reaction
+```
 
-Additional UI/UX Requirements
-- Implement consistent Unix-like command patterns across all interactions
-- Maintain terminal-inspired design system while ensuring modern usability
-- Design error messages and confirmations following Unix conventions
-- Create smooth transitions and hover states that enhance the terminal aesthetic
-- Ensure all interactive elements follow the square bracket convention
-- Implement command-based navigation patterns
-- Design modals to show command context and history
+### Accessibility
+- Keyboard navigation
+- Screen reader support
+- High contrast mode
+- Command auto-completion
+- Command history
+
+## Development Principles
+
+### Modularity
+- Independent feature modules
+- Clear module boundaries
+- Dependency injection
+- Interface-based design
+
+### Extensibility
+- Plugin architecture
+- Event-driven design
+- Feature flags
+- Configuration management
+
+### Code Quality
+- TDD approach
+- Clean architecture
+- SOLID principles
+- Code review process
+- Automated testing
+
+### Performance
+- Message pagination
+- Lazy loading
+- Caching strategy
+- Real-time optimizations
+
+## Security Requirements
+
+### Authentication
+- Clerk integration
+- JWT token management
+- Session handling
+- CSRF protection
+
+### Authorization
+- Role-based access
+- Resource-level permissions
+- Rate limiting
+- Input validation
+
+### Data Protection
+- Data encryption
+- Secure file storage
+- PII handling
+- Audit logging
+
+## Deployment Strategy
+
+### Infrastructure
+- Containerized deployment
+- PostgreSQL database
+- Redis for caching
+- S3 for file storage
+
+### Monitoring
+- Application metrics
+- Error tracking
+- Performance monitoring
+- User analytics
+
+### Scalability
+- Horizontal scaling
+- Load balancing
+- Database sharding
+- Caching strategy

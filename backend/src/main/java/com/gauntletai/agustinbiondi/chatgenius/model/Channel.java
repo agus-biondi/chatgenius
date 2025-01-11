@@ -5,7 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -15,16 +15,22 @@ import java.util.UUID;
        indexes = @Index(name = "idx_channels_name", columnList = "name"),
        uniqueConstraints = @UniqueConstraint(
            name = "uk_channels_name_non_dm",
-           columnNames = {"name", "is_direct_message"}
+           columnNames = {"name", "type"}
        ))
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = {"createdBy", "memberships", "messages", "files"})
+@ToString(exclude = {"createdBy", "memberships", "messages"})
 @EqualsAndHashCode(of = "id")
 public class Channel {
+    public enum Type {
+        PUBLIC,
+        PRIVATE,
+        DIRECT_MESSAGE
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @UuidGenerator
@@ -34,17 +40,21 @@ public class Channel {
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "is_direct_message", nullable = false)
+    @Column(length = 255)
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
-    private boolean isDirectMessage = false;
+    private Type type = Type.PUBLIC;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false, columnDefinition = "VARCHAR(255)")
     private User createdBy;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private Instant createdAt;
 
     @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -54,7 +64,4 @@ public class Channel {
     @Builder.Default
     private Set<Message> messages = new HashSet<>();
 
-    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private Set<File> files = new HashSet<>();
 } 

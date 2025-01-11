@@ -1,18 +1,12 @@
 package com.gauntletai.agustinbiondi.chatgenius.security;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import com.auth0.jwk.JwkProvider;
-import com.auth0.jwk.UrlJwkProvider;
-import com.auth0.jwk.Jwk;
 import com.gauntletai.agustinbiondi.chatgenius.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,70 +14,64 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.net.URI;
-import java.security.interfaces.RSAPublicKey;
-import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ClerkAuthFilter extends OncePerRequestFilter {
+
+    private final ClerkTokenValidator clerkTokenValidator;
     private final UserRepository userRepository;
-    
-    @Value("${clerk.issuer}")
-    private String clerkIssuer;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-        String token = request.getHeader("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            String sessionToken = token.substring(7);
-            try {
-                String clerkUserId = verifyAndGetClerkUserId(sessionToken);
-                if (clerkUserId != null) {
-                    userRepository.findByUserIdWithMemberships(clerkUserId).ifPresent(user -> {
-                        List<SimpleGrantedAuthority> authorities = 
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-                        
-                        UsernamePasswordAuthenticationToken authentication = 
-                            new UsernamePasswordAuthenticationToken(user, null, authorities);
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                    });
-                }
-            } catch (Exception e) {
-                System.err.println("Error processing token: " + e.getMessage());
-                e.printStackTrace();
-                SecurityContextHolder.clearContext();
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+        log.info("Processing request: {} {}", method, path);
+
+        try {
+            String token = extractToken(request);
+            if (token != null) {
+                log.debug("Found bearer token in request");
+                String clerkUserId = clerkTokenValidator.verifyToken(token);
+                log.debug("Token verified for Clerk user ID: {}", clerkUserId);
+                setAuthentication(clerkUserId);
+            } else {
+                log.debug("No bearer token found in request");
             }
+        } catch (Exception e) {
+            log.error("Authentication failed for request {} {}: {}", method, path, e.getMessage());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
+
+        log.debug("Proceeding with filter chain for {} {}", method, path);
         filterChain.doFilter(request, response);
     }
 
-    private String verifyAndGetClerkUserId(String token) {
-        try {
-            DecodedJWT unverifiedJwt = JWT.decode(token);
-            String jwksUrl = clerkIssuer + "/.well-known/jwks.json";
-            JwkProvider provider = new UrlJwkProvider(URI.create(jwksUrl).toURL());
-            Jwk jwk = provider.get(unverifiedJwt.getKeyId());
-            
-            Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
-            DecodedJWT jwt = JWT.require(algorithm)
-                .withIssuer(clerkIssuer)
-                .build()
-                .verify(token);
-
-            return jwt.getSubject();
-        } catch (Exception e) {
-            System.err.println("Failed to verify token: " + e.getMessage());
-            e.printStackTrace();
-            return null;
+    private String extractToken(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
         }
+        return null;
     }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path.startsWith("/api/auth/") || path.equals("/api/webhook/clerk");
+    private void setAuthentication(String clerkUserId) {
+        userRepository.findById(clerkUserId).ifPresent(user -> {
+            var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
+            log.debug("Setting authentication for user {} with role {}", user.getUserId(), user.getRole());
+            var authentication = new UsernamePasswordAuthenticationToken(
+                    user.getUserId(),
+                    null,
+                    authorities
+            );
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        });
     }
 } 

@@ -8,3 +8,15 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+declare global {
+  interface Window {
+      Clerk?: {
+          session?: {
+              getToken(): Promise<string | null>;
+          };
+      };
+  }
+}
+
+export {};

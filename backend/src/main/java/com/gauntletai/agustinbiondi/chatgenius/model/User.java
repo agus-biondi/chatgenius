@@ -4,18 +4,23 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.time.Instant;
 
 @Entity
 @Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
-@ToString(exclude = {"createdChannels", "messages", "channelMemberships"})
+@Builder
+@AllArgsConstructor
 @EqualsAndHashCode(of = "userId")
 public class User {
+
+    public enum Role {
+        ADMIN,
+        USER
+    } 
+
     @Id
     @Column(name = "user_id", nullable = false, columnDefinition = "VARCHAR(255)")
     private String userId;
@@ -28,18 +33,10 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserRole role = UserRole.USER;
+    @Builder.Default
+    private Role role = Role.ADMIN;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Channel> createdChannels = new HashSet<>();
-
-    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Message> messages = new HashSet<>();
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<ChannelMembership> channelMemberships = new HashSet<>();
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private Instant createdAt;
 } 

@@ -1,36 +1,26 @@
-import api from './api';
-import { Channel, CreateChannelRequest } from '../types/index';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from './apiClient';
+import { logger } from '../utils/logger';
 
-interface PageResponse<T> {
-    content: T[];
-    totalPages: number;
-    totalElements: number;
+export interface Channel {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export const channelService = {
-    async getChannels(page = 0, size = 20) {
-        console.log('Calling getChannels with page:', page, 'size:', size);
-        try {
-            const response = await api.get<PageResponse<Channel>>('/channels', { params: { page, size } });
-            console.log('getChannels response:', response);
-            return response.data.content;
-        } catch (error) {
-            console.error('getChannels error:', error);
-            throw error;
-        }
-    },
+export const fetchChannels = async (): Promise<Channel[]> => {
+  logger.debug('api', 'Fetching channels');
+  const response = await apiClient.get('/channels');
+  return response.data;
+};
 
-    async createChannel(request: CreateChannelRequest) {
-        const response = await api.post<Channel>('/channels', request);
-        return response.data;
-    },
-
-    async getChannel(channelId: string) {
-        const response = await api.get<Channel>(`/channels/${channelId}`);
-        return response.data;
-    },
-
-    async deleteChannel(channelId: string) {
-        await api.delete(`/channels/${channelId}`);
-    }
-}; 
+export const useChannels = () => {
+  return useQuery({
+    queryKey: ['channels'],
+    queryFn: fetchChannels,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+};
