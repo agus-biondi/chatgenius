@@ -1,40 +1,36 @@
 import React from 'react';
+import { usePublicChannels } from '../services/channelService';
 import { useUsers } from '../services/userService';
-import { useChannels } from '../services/channelService';
+import { TerminalContainer } from './ui/TerminalContainer';
 
 export const TestDataFetching: React.FC = () => {
-  const { data: users, isLoading: usersLoading, isError: usersError } = useUsers();
-  const { data: channels, isLoading: channelsLoading, isError: channelsError } = useChannels();
+  const { data: channels, isLoading: isLoadingChannels } = usePublicChannels();
+  const { data: users, isLoading: isLoadingUsers } = useUsers();
+
+  if (isLoadingChannels || isLoadingUsers) {
+    return (
+      <TerminalContainer className="p-4">
+        <div className="text-[var(--text-secondary)]">Loading data...</div>
+      </TerminalContainer>
+    );
+  }
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Data Fetching Test</h2>
-      
-      <div className="mb-6">
-        <h3 className="text-lg font-bold mb-2">Users</h3>
-        {usersLoading && <p>Loading users...</p>}
-        {usersError && <p className="text-red-500">Error loading users</p>}
-        {users && (
-          <ul>
-            {users.map(user => (
-              <li key={user.id}>{user.username} ({user.email})</li>
-            ))}
-          </ul>
-        )}
+    <TerminalContainer className="p-4">
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-[var(--terminal-green)] mb-2">$ channels</h2>
+          <pre className="text-[var(--text-secondary)]">
+            {JSON.stringify(channels, null, 2)}
+          </pre>
+        </div>
+        <div>
+          <h2 className="text-[var(--terminal-green)] mb-2">$ users</h2>
+          <pre className="text-[var(--text-secondary)]">
+            {JSON.stringify(users, null, 2)}
+          </pre>
+        </div>
       </div>
-
-      <div>
-        <h3 className="text-lg font-bold mb-2">Channels</h3>
-        {channelsLoading && <p>Loading channels...</p>}
-        {channelsError && <p className="text-red-500">Error loading channels</p>}
-        {channels && (
-          <ul>
-            {channels.map(channel => (
-              <li key={channel.id}>{channel.name}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
+    </TerminalContainer>
   );
 }; 

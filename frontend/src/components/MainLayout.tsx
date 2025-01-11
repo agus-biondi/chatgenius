@@ -1,11 +1,16 @@
 // src/components/MainLayout.tsx
 import React, { memo } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { withRenderLogging } from '../utils/withRenderLogging';
 import { Navbar } from './Navbar';
-import { TestDataFetching } from './TestDataFetching';
+import { Sidebar } from './Sidebar';
+import { usePublicChannels } from '../services/channelService';
+import { useUsers } from '../services/userService';
 
 const MainLayoutBase: React.FC = () => {
+  const { data: channels = [] } = usePublicChannels();
+  const { data: users = [] } = useUsers();
+
   return (
     <div className="flex flex-col h-screen bg-[var(--terminal-black)]">
       {/* Navbar spans full width with padding */}
@@ -14,30 +19,13 @@ const MainLayoutBase: React.FC = () => {
       </div>
 
       {/* Content area with sidebar and main content */}
-      <div className="flex flex-1 px-8">
+      <div className="flex flex-1 gap-8 px-8 py-4">
         {/* Sidebar */}
-        <aside className="w-1/4 bg-[var(--terminal-gray)] p-4 terminal-window">
-          <h2 className="text-xl font-bold text-[#6edb71] mb-4">Channels</h2>
-          <ul>
-            <li className="message"><Link to="/channel/general">#general</Link></li>
-            <li className="message"><Link to="/channel/random">#random</Link></li>
-            {/* Add more channels as needed */}
-          </ul>
-          <h2 className="text-xl font-bold text-[#6edb71] mt-6 mb-4">Users</h2>
-          <ul>
-            <li className="message">user1</li>
-            <li className="message">user2</li>
-            {/* Add more users as needed */}
-          </ul>
-        </aside>
+        <Sidebar channels={channels} users={users} />
 
         {/* Main Content Area */}
         <main className="flex-1">
-          {/* Content Outlet */}
-          <div className="terminal-window p-4">
-            <TestDataFetching />
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
       </div>
     </div>

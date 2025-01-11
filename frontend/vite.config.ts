@@ -7,4 +7,12 @@ export default defineConfig({
   define: {
     'process.env': {}
   },
+  server: {
+    hmr: {
+      overlay: true
+    },
+    watch: {
+      usePolling: true
+    }
+  }
 })

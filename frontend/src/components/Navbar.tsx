@@ -1,38 +1,29 @@
-import React, { memo } from 'react';
-import { withRenderLogging } from '../utils/withRenderLogging';
-import { TerminalButton } from './buttons/TerminalButton';
+import React from 'react';
+import { useClerk } from '@clerk/clerk-react';
+import { TerminalContainer } from './ui/TerminalContainer';
+import { TerminalPrompt } from './ui/TerminalPrompt';
 
-const NavbarBase: React.FC = () => {
+export const Navbar: React.FC = () => {
+  const { signOut } = useClerk();
+
   return (
-    <div className="relative mb-4">
-      {/* Main navbar container with border */}
-      <div className="terminal-component">
-        <div className="flex justify-between items-center">
-          {/* Branding */}
-          <div>
-            <h1 className="text-2xl font-bold text-[#6edb71] font-['Roboto_Mono']">
-              ELECTRO_CHAT_9000
-            </h1>
-            <p className="text-sm text-[var(--text-secondary)] font-['Roboto_Mono']">
-              Tomorrow's communication today
-            </p>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-4">
-            <TerminalButton>
-              [config]
-            </TerminalButton>
-            <TerminalButton>
-              [logout]
-            </TerminalButton>
-          </div>
+    <TerminalContainer className="w-full">
+      <div className="flex justify-between items-center">
+      <div className="p-0">
+        <h1 className="tracking-wider font-bold text-[var(--terminal-green)] font-mono text-xl">ELECTRO_CHAT_9000</h1>
+        <div className="text-xs text-[#9ba8b9] mt-1">Tomorrow's Communication, Today</div>
+      </div>
+        <div className="flex items-center gap-4">
+          <TerminalPrompt
+            command="config"
+            onClick={() => {/* TODO: Add config modal */}}
+          />
+          <TerminalPrompt
+            command="logout"
+            onClick={() => signOut()}
+          />
         </div>
       </div>
-    </div>
+    </TerminalContainer>
   );
-};
-
-// Apply memo before withRenderLogging to properly track re-renders
-const MemoizedNavbar = memo(NavbarBase);
-export const Navbar = withRenderLogging(MemoizedNavbar, 'Navbar'); 
+}; 
