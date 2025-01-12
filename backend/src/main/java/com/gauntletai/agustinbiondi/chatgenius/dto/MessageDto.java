@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -27,14 +26,17 @@ public class MessageDTO {
     @NotNull(message = "Created by user ID cannot be null")
     private String createdBy;
 
+    @NotNull(message = "Username cannot be null")
+    private String username;
+
     @NotNull(message = "Channel ID cannot be null")
     private UUID channelId;
 
     private UUID parentId;
 
-    private Instant createdAt;
+    private String createdAt;
 
-    private Instant editedAt;
+    private String editedAt;
 
     private boolean isEdited;
 

@@ -1,404 +1,338 @@
-import { Client, Message, StompSubscription } from '@stomp/stompjs';
+import { Client, IFrame } from '@stomp/stompjs';
 import { logger } from '../../utils/logger';
-import { MessageDTO, NotificationDTO, Channel, CreateMessageRequest } from '../../types';
+import { ReactionDTO, MessageDTO, Channel } from '../../types';
 import SockJS from 'sockjs-client';
 
-type PresenceStatus = 'online' | 'offline' | 'away';
-
-interface ChannelEvent {
-  type: 'CREATED' | 'DELETED';
+type ChannelEvent = {
+  type: 'CREATED' | 'DELETED' | 'UPDATED';
   channel: Channel;
-}
+};
+
+type MessageHandler = (message: MessageDTO) => void;
+type ReactionHandler = (messageId: string, reactions: ReactionDTO[]) => void;
+type PresenceHandler = (channelId: string, userId: string) => void;
+type ChannelEventHandler = (event: ChannelEvent) => void;
 
 export class WebSocketManager {
-  private client: Client;
-  private subscriptions: Map<string, StompSubscription> = new Map();
-  private messageHandlers: Map<string, ((message: MessageDTO) => void)[]> = new Map();
-  private typingHandlers: Map<string, ((username: string) => void)[]> = new Map();
-  private notificationHandlers: ((notification: NotificationDTO) => void)[] = [];
-  private channelEventHandlers: ((event: ChannelEvent) => void)[] = [];
-  private connectionPromise: Promise<void> | null = null;
   private static instance: WebSocketManager;
+  private client: Client | null = null;
   private reconnectAttempts: number = 0;
-  private readonly MAX_RECONNECT_ATTEMPTS = 5;
+  private maxReconnectAttempts: number = 5;
+  private connectListeners: (() => void)[] = [];
+  private disconnectListeners: (() => void)[] = [];
   private authToken: string | null = null;
-  private isReady: boolean = false;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private isConnecting: boolean = false;
+
+  private messageHandlers: Set<MessageHandler> = new Set();
+  private reactionHandlers: Set<ReactionHandler> = new Set();
+  private presenceHandlers: Set<PresenceHandler> = new Set();
+  private channelEventHandlers: Set<ChannelEventHandler> = new Set();
 
   private constructor() {
-    logger.info('state', 'Initializing WebSocket Manager');
-    
+    this.setupClient();
+  }
+
+  private setupClient() {
+    if (this.client) {
+      this.client.deactivate();
+    }
+
     this.client = new Client({
-      webSocketFactory: () => {
-        const socket = new SockJS(`${import.meta.env.VITE_WS_URL || 'http://localhost:8080'}/ws`);
-        return socket;
-      },
+      webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
       connectHeaders: this.authToken ? {
         Authorization: `Bearer ${this.authToken}`
       } : {},
-      debug: (str) => {
-        logger.debug('state', 'STOMP Debug', str);
-      },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-    });
-
-    logger.debug('state', 'WebSocket client configured', { 
-      url: this.client.brokerURL,
-      reconnectDelay: 5000,
-    });
-
-    this.setupEventHandlers();
-  }
-
-  private setupEventHandlers(): void {
-    // Connection success handler
-    this.client.onConnect = () => {
-      logger.info('state', 'WebSocket connection established', { 
-        url: this.client.brokerURL,
-        sessionId: this.client.connected ? 'connected' : 'disconnected'
-      });
-      this.reconnectAttempts = 0;
-      this.isReady = true;
-      this.sendPresenceStatus('online');
-    };
-
-    // STOMP protocol error handler
-    this.client.onStompError = (frame) => {
-      const error = new Error(`STOMP error: ${frame.body}`);
-      logger.error('state', 'STOMP protocol error', { 
-        error: error.message,
-        command: frame.command,
-        headers: frame.headers,
-        body: frame.body 
-      });
-      this.handleConnectionError(error);
-    };
-
-    // WebSocket error handler
-    this.client.onWebSocketError = (event) => {
-      const error = event instanceof Error ? event : new Error('Unknown WebSocket error');
-      logger.error('state', 'WebSocket connection error', { 
-        type: event.type,
-        message: error.message
-      });
-      this.handleConnectionError(error);
-    };
-
-    // Connection close handler
-    this.client.onWebSocketClose = () => {
-      logger.warn('state', 'WebSocket connection closed');
-      this.isReady = false;
-      this.sendPresenceStatus('offline');
-      this.connectionPromise = null;
-      
-      // Attempt reconnection if not explicitly disconnected
-      if (this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
-        this.reconnectAttempts++;
-        logger.info('state', `Attempting reconnection (${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`);
-        this.client.activate();
-      } else {
-        logger.error('state', 'Max reconnection attempts reached');
+      debug: (str) => {
+        logger.debug('state', 'STOMP Debug:', str);
       }
+    });
+
+    this.client.onConnect = () => {
+      logger.debug('state', 'WebSocket connected');
+      this.reconnectAttempts = 0;
+      this.isConnecting = false;
+      this.setupSubscriptions();
+      this.notifyConnect();
+    };
+
+    this.client.onDisconnect = () => {
+      logger.debug('state', 'WebSocket disconnected');
+      this.isConnecting = false;
+      this.notifyDisconnect();
+      this.scheduleReconnect();
+    };
+
+    this.client.onStompError = (frame) => {
+      logger.error('state', 'STOMP error', frame.body);
+      this.isConnecting = false;
+      this.notifyDisconnect();
+      this.scheduleReconnect();
+    };
+
+    this.client.onWebSocketError = (event) => {
+      logger.error('state', 'WebSocket error', event);
+      this.isConnecting = false;
+      this.notifyDisconnect();
+      this.scheduleReconnect();
     };
   }
 
-  private handleConnectionError(error: Error): void {
-    logger.error('state', 'Connection error occurred', { error });
-    if (this.connectionPromise) {
-      this.connectionPromise = null;
+  private setupSubscriptions() {
+    if (!this.client?.connected) {
+      logger.warn('state', 'Cannot setup subscriptions - WebSocket not connected');
+      return;
     }
+
+    // Subscribe to messages
+    this.client.subscribe('/topic/messages', (message) => {
+      try {
+        const messageData = JSON.parse(message.body) as MessageDTO;
+        logger.debug('state', 'Received message', { messageId: messageData.id });
+        this.messageHandlers.forEach(handler => handler(messageData));
+      } catch (error) {
+        logger.error('state', 'Failed to parse message', error);
+      }
+    }, {
+      Authorization: `Bearer ${this.authToken}`
+    });
+
+    // Subscribe to reactions
+    this.client.subscribe('/topic/reactions', (message) => {
+      try {
+        const { messageId, reactions } = JSON.parse(message.body);
+        logger.debug('state', 'Received reactions update', { messageId });
+        this.reactionHandlers.forEach(handler => handler(messageId, reactions));
+      } catch (error) {
+        logger.error('state', 'Failed to parse reactions update', error);
+      }
+    }, {
+      Authorization: `Bearer ${this.authToken}`
+    });
+
+    // Subscribe to presence
+    this.client.subscribe('/topic/presence', (message) => {
+      try {
+        const { channelId, userId } = JSON.parse(message.body);
+        logger.debug('state', 'Received presence update', { channelId, userId });
+        this.presenceHandlers.forEach(handler => handler(channelId, userId));
+      } catch (error) {
+        logger.error('state', 'Failed to parse presence update', error);
+      }
+    }, {
+      Authorization: `Bearer ${this.authToken}`
+    });
+
+    // Subscribe to channel events
+    this.client.subscribe('/topic/channels/events', (message) => {
+      try {
+        const event = JSON.parse(message.body) as ChannelEvent;
+        logger.debug('state', 'Received channel event', { type: event.type, channelId: event.channel.id });
+        this.channelEventHandlers.forEach(handler => handler(event));
+      } catch (error) {
+        logger.error('state', 'Failed to parse channel event', error);
+      }
+    }, {
+      Authorization: `Bearer ${this.authToken}`
+    });
   }
 
-  private async sendPresenceStatus(status: PresenceStatus): Promise<void> {
-    if (!this.client.connected) return;
+  private scheduleReconnect() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
 
-    try {
-      this.client.publish({
-        destination: '/app/presence',
-        body: JSON.stringify({ status }),
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      logger.error('state', 'Max reconnection attempts reached');
+      return;
+    }
+
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    logger.debug('state', `Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts + 1})`);
+
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect(this.authToken!).catch(error => {
+        logger.error('state', 'Reconnection failed', error);
       });
-      logger.debug('state', `Presence status sent`, { status });
-    } catch (error) {
-      logger.error('state', 'Failed to send presence status', { status, error });
-    }
+    }, delay);
   }
 
-  public static getInstance(): WebSocketManager {
+  static getInstance(): WebSocketManager {
     if (!WebSocketManager.instance) {
       WebSocketManager.instance = new WebSocketManager();
     }
     return WebSocketManager.instance;
   }
 
+  onConnect(listener: () => void) {
+    this.connectListeners.push(listener);
+  }
+
+  offConnect(listener: () => void) {
+    this.connectListeners = this.connectListeners.filter(l => l !== listener);
+  }
+
+  onDisconnect(listener: () => void) {
+    this.disconnectListeners.push(listener);
+  }
+
+  offDisconnect(listener: () => void) {
+    this.disconnectListeners = this.disconnectListeners.filter(l => l !== listener);
+  }
+
+  private notifyConnect() {
+    this.connectListeners.forEach(listener => listener());
+  }
+
+  private notifyDisconnect() {
+    this.disconnectListeners.forEach(listener => listener());
+  }
+
   async connect(token: string): Promise<void> {
-    if (this.client.connected) {
-      logger.debug('state', 'WebSocket already connected');
+    if (this.isConnecting) {
+      logger.debug('state', 'Connection already in progress');
       return;
     }
 
-    if (this.connectionPromise) {
-      logger.debug('state', 'WebSocket connection already in progress');
-      return this.connectionPromise;
+    if (this.client?.connected && this.authToken === token) {
+      logger.debug('state', 'Already connected with same token');
+      return;
     }
 
     this.authToken = token;
-    this.isReady = false;
+    this.isConnecting = true;
 
-    logger.info('state', 'Initiating WebSocket connection', {
-      url: this.client.brokerURL
-    });
+    logger.debug('state', 'Initializing WebSocket connection');
+    this.setupClient();
 
-    this.connectionPromise = new Promise((resolve, reject) => {
-      try {
-        this.client.connectHeaders = {
-          Authorization: `Bearer ${token}`,
-        };
-
-        this.client.onConnect = () => {
-          logger.info('state', 'WebSocket connection established', { 
-            url: this.client.brokerURL,
-            sessionId: this.client.connected ? 'connected' : 'disconnected'
-          });
-          this.isReady = true;
-          resolve();
-        };
-
-        this.client.onStompError = (frame) => {
-          const error = new Error(`STOMP error: ${frame.body}`);
-          logger.error('state', 'STOMP protocol error during connection', { 
-            error: error.message,
-            frame 
-          });
-          reject(error);
-          this.connectionPromise = null;
-        };
-
-        logger.debug('state', 'Activating WebSocket client');
-        this.client.activate();
-      } catch (error) {
-        logger.error('state', 'Failed to initiate WebSocket connection', { error });
-        reject(error);
-        this.connectionPromise = null;
-      }
-    });
-
-    return this.connectionPromise;
+    try {
+      await this.ensureConnected();
+      logger.debug('state', 'WebSocket connection established');
+    } catch (error) {
+      logger.error('state', 'Failed to connect to WebSocket', error);
+      this.notifyDisconnect();
+      this.scheduleReconnect();
+    } finally {
+      this.isConnecting = false;
+    }
   }
 
   disconnect(): void {
-    this.isReady = false;
-    this.sendPresenceStatus('offline').catch(error => 
-      logger.error('state', 'Failed to send offline status before disconnect', { error })
-    );
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    if (!this.client?.connected) return;
+
+    logger.debug('state', 'Disconnecting WebSocket');
     this.client.deactivate();
-    this.subscriptions.clear();
-    this.messageHandlers.clear();
-    this.typingHandlers.clear();
-    this.notificationHandlers = [];
-    this.channelEventHandlers = [];
-    this.connectionPromise = null;
-    this.reconnectAttempts = 0;
-    logger.info('state', 'WebSocket connection closed');
-  }
-
-  async subscribeToChannel(
-    channelId: string,
-    onMessage: (message: MessageDTO) => void,
-    onTyping?: (username: string) => void
-  ): Promise<void> {
-    // Validate channelId
-    if (!channelId || channelId.trim() === '') {
-      logger.warn('state', 'Attempted to subscribe with invalid channelId', { channelId });
-      throw new Error('Invalid channelId: Channel ID is required');
-    }
-
-    await this.ensureConnected();
-
-    // Subscribe to messages
-    if (!this.subscriptions.has(channelId)) {
-      const subscription = this.client.subscribe(
-        `/topic/channels/${channelId}`,
-        (message: Message) => {
-          const messageData = JSON.parse(message.body) as MessageDTO;
-          logger.debug('state', 'Received message on channel', { channelId, messageData });
-          this.messageHandlers.get(channelId)?.forEach(handler => handler(messageData));
-        }
-      );
-      this.subscriptions.set(channelId, subscription);
-      logger.info('state', 'Subscribed to channel messages', { channelId });
-    }
-
-    // Add message handler
-    if (!this.messageHandlers.has(channelId)) {
-      this.messageHandlers.set(channelId, []);
-    }
-    this.messageHandlers.get(channelId)?.push(onMessage);
-
-    // Subscribe to typing events if handler provided
-    if (onTyping) {
-      if (!this.typingHandlers.has(channelId)) {
-        this.client.subscribe(
-          `/topic/channels/${channelId}/typing`,
-          (message: Message) => {
-            const username = message.body;
-            logger.debug('state', 'Received typing event', { channelId, username });
-            this.typingHandlers.get(channelId)?.forEach(handler => handler(username));
-          }
-        );
-        this.typingHandlers.set(channelId, []);
-        logger.info('state', 'Subscribed to channel typing events', { channelId });
-      }
-      this.typingHandlers.get(channelId)?.push(onTyping);
-    }
-  }
-
-  async unsubscribeFromChannel(channelId: string): Promise<void> {
-    const subscription = this.subscriptions.get(channelId);
-    if (subscription) {
-      subscription.unsubscribe();
-      this.subscriptions.delete(channelId);
-      this.messageHandlers.delete(channelId);
-      this.typingHandlers.delete(channelId);
-      logger.info('state', 'Unsubscribed from channel', { channelId });
-    }
-  }
-
-  async sendMessage(channelId: string, content: string, parentId?: string): Promise<void> {
-    // Validate channelId
-    if (!channelId || channelId.trim() === '') {
-      logger.warn('state', 'Attempted to send message with invalid channelId', { channelId });
-      throw new Error('Invalid channelId: Channel ID is required');
-    }
-
-    await this.ensureConnected();
-
-    const messageRequest: CreateMessageRequest = {
-      content,
-      parentId
-    };
-
-    this.client.publish({
-      destination: `/app/channels/${channelId}/messages`,
-      body: JSON.stringify(messageRequest),
-    });
-    logger.debug('state', 'Sent message to channel', { channelId, content, parentId });
-  }
-
-  async sendTypingEvent(channelId: string): Promise<void> {
-    // Validate channelId
-    if (!channelId || channelId.trim() === '') {
-      logger.warn('state', 'Attempted to send typing event with invalid channelId', { channelId });
-      throw new Error('Invalid channelId: Channel ID is required');
-    }
-
-    await this.ensureConnected();
-
-    this.client.publish({
-      destination: `/app/channels/${channelId}/typing`,
-      body: '',
-    });
-    logger.debug('state', 'Sent typing event to channel', { channelId });
-  }
-
-  async subscribeToNotifications(onNotification: (notification: NotificationDTO) => void): Promise<void> {
-    await this.ensureConnected();
-    
-    // Add notification handler
-    this.notificationHandlers.push(onNotification);
-    
-    // Subscribe to notifications if not already subscribed
-    if (!this.subscriptions.has('notifications')) {
-      const subscription = this.client.subscribe(
-        '/topic/notifications',
-        (message: Message) => {
-          try {
-            const notification = JSON.parse(message.body) as NotificationDTO;
-            logger.debug('state', 'Received notification', { notification });
-            this.notificationHandlers.forEach(handler => handler(notification));
-          } catch (error) {
-            logger.error('state', 'Failed to parse notification', { error, body: message.body });
-          }
-        }
-      );
-      this.subscriptions.set('notifications', subscription);
-      logger.info('state', 'Subscribed to notifications');
-    }
-  }
-
-  async unsubscribeFromNotifications(handler: (notification: NotificationDTO) => void): Promise<void> {
-    // Remove specific handler
-    this.notificationHandlers = this.notificationHandlers.filter(h => h !== handler);
-    
-    // If no handlers left, unsubscribe from notifications
-    if (this.notificationHandlers.length === 0 && this.subscriptions.has('notifications')) {
-      const subscription = this.subscriptions.get('notifications');
-      if (subscription) {
-        subscription.unsubscribe();
-        this.subscriptions.delete('notifications');
-        logger.info('state', 'Unsubscribed from notifications');
-      }
-    }
-  }
-
-  async subscribeToChannelEvents(onEvent: (event: ChannelEvent) => void): Promise<void> {
-    await this.ensureConnected();
-    
-    // Add event handler
-    this.channelEventHandlers.push(onEvent);
-    
-    // Subscribe to channel events if not already subscribed
-    if (!this.subscriptions.has('channel-events')) {
-      const subscription = this.client.subscribe(
-        '/topic/channels/events',
-        (message: Message) => {
-          try {
-            const event = JSON.parse(message.body) as ChannelEvent;
-            logger.debug('state', 'Received channel event', { type: event.type });
-            this.channelEventHandlers.forEach(handler => handler(event));
-          } catch (error) {
-            logger.error('state', 'Failed to parse channel event', { error, body: message.body });
-          }
-        }
-      );
-      this.subscriptions.set('channel-events', subscription);
-      logger.info('state', 'Subscribed to channel events');
-    }
-  }
-
-  async unsubscribeFromChannelEvents(handler: (event: ChannelEvent) => void): Promise<void> {
-    // Remove specific handler
-    this.channelEventHandlers = this.channelEventHandlers.filter(h => h !== handler);
-    
-    // If no handlers left, unsubscribe from channel events
-    if (this.channelEventHandlers.length === 0 && this.subscriptions.has('channel-events')) {
-      const subscription = this.subscriptions.get('channel-events');
-      if (subscription) {
-        subscription.unsubscribe();
-        this.subscriptions.delete('channel-events');
-        logger.info('state', 'Unsubscribed from channel events');
-      }
-    }
-  }
-
-  public isConnected(): boolean {
-    return this.isReady && this.client.connected;
+    this.notifyDisconnect();
   }
 
   private async ensureConnected(): Promise<void> {
-    if (!this.isConnected()) {
-      if (!this.connectionPromise) {
-        logger.error('state', 'WebSocket not initialized');
-        throw new Error('WebSocket not initialized. Call connect() first.');
-      }
-      await this.connectionPromise;
-      // Double check after waiting
-      if (!this.isConnected()) {
-        throw new Error('WebSocket connection failed');
-      }
+    if (this.client?.connected) return;
+
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      throw new Error('Max reconnection attempts reached');
     }
+
+    return new Promise((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('WebSocket client not initialized'));
+        return;
+      }
+
+      const originalOnConnect = this.client.onConnect;
+      const originalOnStompError = this.client.onStompError;
+
+      const cleanup = () => {
+        this.client!.onConnect = originalOnConnect;
+        this.client!.onStompError = originalOnStompError;
+      };
+
+      this.client.onConnect = () => {
+        cleanup();
+        resolve();
+      };
+
+      this.client.onStompError = (frame: IFrame) => {
+        cleanup();
+        reject(new Error(`STOMP error: ${frame.body}`));
+      };
+      
+      try {
+        this.client.activate();
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
+    });
+  }
+
+  addMessageHandler(handler: MessageHandler) {
+    this.messageHandlers.add(handler);
+  }
+
+  removeMessageHandler(handler: MessageHandler) {
+    this.messageHandlers.delete(handler);
+  }
+
+  addReactionHandler(handler: ReactionHandler) {
+    this.reactionHandlers.add(handler);
+  }
+
+  removeReactionHandler(handler: ReactionHandler) {
+    this.reactionHandlers.delete(handler);
+  }
+
+  addPresenceHandler(handler: PresenceHandler) {
+    this.presenceHandlers.add(handler);
+  }
+
+  removePresenceHandler(handler: PresenceHandler) {
+    this.presenceHandlers.delete(handler);
+  }
+
+  addChannelEventHandler(handler: ChannelEventHandler) {
+    this.channelEventHandlers.add(handler);
+  }
+
+  removeChannelEventHandler(handler: ChannelEventHandler) {
+    this.channelEventHandlers.delete(handler);
+  }
+
+  async sendMessage(channelId: string, content: string): Promise<void> {
+    if (!this.client?.connected) {
+      logger.warn('state', 'Cannot send message - WebSocket not connected');
+      return;
+    }
+
+    const destination = `/app/channels/${channelId}/messages`;
+    const message = { content };
+
+    logger.debug('state', `Sending message to ${destination}`, message);
+
+    try {
+      await this.client.publish({
+        destination,
+        body: JSON.stringify(message),
+        headers: {
+          Authorization: `Bearer ${this.authToken}`
+        }
+      });
+    } catch (error) {
+      logger.error('state', 'Failed to send message', error);
+    }
+  }
+
+  isConnected(): boolean {
+    return this.client?.connected ?? false;
   }
 }
 
-// Export the singleton instance
 export const webSocketManager = WebSocketManager.getInstance(); 

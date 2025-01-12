@@ -1,0 +1,103 @@
+@startuml Reaction Flow
+
+actor User
+participant "React UI" as UI
+participant "ReactionPicker" as Picker
+participant "ReactionController" as Controller
+participant "ReactionService" as Service
+participant "WebSocketEventHandler" as WSHandler
+participant "ReactionRepository" as Repo
+database "Database" as DB
+
+== Add/Update Reaction ==
+
+User -> UI: Click reaction button
+activate UI
+UI -> Picker: Open emoji picker
+activate Picker
+User -> Picker: Select emoji
+Picker -> UI: Return selected emoji
+deactivate Picker
+
+UI -> Controller: POST /api/messages/{messageId}/reactions
+activate Controller
+Controller -> Service: addReaction(userId, messageId, emoji)
+activate Service
+
+Service -> Repo: findByUser_IdAndMessage_IdAndEmoji
+activate Repo
+Repo -> DB: SELECT
+DB --> Repo: Result
+Repo --> Service: Optional<Reaction>
+deactivate Repo
+
+alt Reaction exists
+    Service -> Repo: delete(reaction)
+    activate Repo
+    Repo -> DB: DELETE
+    DB --> Repo: OK
+    deactivate Repo
+end
+
+Service -> Repo: save(newReaction)
+activate Repo
+Repo -> DB: INSERT
+DB --> Repo: Saved reaction
+Repo --> Service: Reaction
+deactivate Repo
+
+Service --> Controller: ReactionDTO
+deactivate Service
+
+Controller -> WSHandler: broadcastReactionUpdate(messageId)
+activate WSHandler
+WSHandler -> Service: getReactionsForMessage(messageId)
+Service --> WSHandler: List<ReactionDTO>
+WSHandler -> UI: Send to /topic/messages/{messageId}/reactions
+deactivate WSHandler
+
+Controller --> UI: 200 OK
+deactivate Controller
+
+UI -> UI: Update reaction display
+deactivate UI
+
+== Remove Reaction ==
+
+User -> UI: Click existing reaction
+activate UI
+UI -> Controller: DELETE /api/messages/{messageId}/reactions/{emoji}
+activate Controller
+Controller -> Service: removeReaction(userId, messageId, emoji)
+activate Service
+
+Service -> Repo: findByUser_IdAndMessage_IdAndEmoji
+activate Repo
+Repo -> DB: SELECT
+DB --> Repo: Result
+Repo --> Service: Optional<Reaction>
+deactivate Repo
+
+Service -> Repo: delete(reaction)
+activate Repo
+Repo -> DB: DELETE
+DB --> Repo: OK
+deactivate Repo
+
+Service --> Controller: void
+deactivate Service
+
+Controller -> WSHandler: broadcastReactionUpdate(messageId)
+activate WSHandler
+WSHandler -> Service: getReactionsForMessage(messageId)
+Service --> WSHandler: List<ReactionDTO>
+WSHandler -> UI: Send to /topic/messages/{messageId}/reactions
+deactivate WSHandler
+
+Controller --> UI: 204 No Content
+deactivate Controller
+
+UI -> UI: Update reaction display
+deactivate UI
+
+@enduml 

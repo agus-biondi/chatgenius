@@ -6,9 +6,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
 import java.util.UUID;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.gauntletai.agustinbiondi.chatgenius.model.User;
 
 @Slf4j
 @RestController
@@ -18,10 +19,9 @@ public class MessageController {
     private final MessageService messageService;
 
     @GetMapping("/parents")
-    public ResponseEntity<List<MessageDTO>> getLatestParentMessages(@PathVariable UUID channelId) {
-        log.debug("REST request to get latest parent messages for channel: {}", channelId);
+    public ResponseEntity<Page<MessageDTO>> getLatestParentMessages(
+            @PathVariable UUID channelId) {
         return ResponseEntity.ok(messageService.getLatestParentMessages(channelId));
     }
 
-    // ... existing endpoints ...
 } 

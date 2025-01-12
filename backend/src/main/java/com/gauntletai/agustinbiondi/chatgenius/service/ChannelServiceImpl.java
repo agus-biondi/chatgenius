@@ -87,10 +87,6 @@ public class ChannelServiceImpl implements ChannelService {
         Channel channel = channelRepository.findById(channelId)
                 .orElseThrow(() -> new EntityNotFoundException("Channel not found: " + channelId));
 
-        if (!channel.getCreatedBy().getUserId().equals(userId)) {
-            throw new AccessDeniedException("Only channel creator can delete the channel");
-        }
-
         ChannelDTO deletedChannel = toDTO(channel);
         channelRepository.delete(channel);
         webSocketEventHandler.broadcastChannelDeleted(deletedChannel);

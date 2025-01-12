@@ -18,7 +18,7 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
      * Fetch parent messages (messages without a parent) for a given channel.
      * Always sorted by createdAt desc.
      */
-    @Query("SELECT m FROM Message m WHERE m.channel.id = :channelId AND m.parent IS NULL ORDER BY m.createdAt DESC")
+    @Query("SELECT m FROM Message m WHERE m.channel.id = :channelId AND m.parent IS NULL ORDER BY m.createdAt ASC")
     Page<Message> findParentMessagesByChannelId(@Param("channelId") UUID channelId, Pageable pageable);
 
     /**
@@ -26,4 +26,6 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
      * This method fetches replies where the parent ID is in the provided list of parent IDs.
      */
     List<Message> findTop3ByParentIdInOrderByCreatedAtDesc(List<UUID> parentIds);
+
+    Long countByParentId(UUID parentId);
 } 

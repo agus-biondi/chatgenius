@@ -33,20 +33,31 @@ public class ClerkChannelInterceptor implements ChannelInterceptor {
             String token = accessor.getFirstNativeHeader("Authorization");
             if (token != null && token.startsWith("Bearer ")) {
                 try {
-                    String clerkUserId = tokenValidator.verifyToken(token.substring(7));
+                    // Extract the token without "Bearer " prefix
+                    String tokenValue = token.substring(7);
+                    
+                    // Verify token and get user ID
+                    String clerkUserId = tokenValidator.verifyToken(tokenValue);
+                    log.debug("WebSocket token verified for user: {}", clerkUserId);
+                    
+                    // Find user and set authentication
                     userRepository.findById(clerkUserId).ifPresent(user -> {
                         var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
                         var authentication = new UsernamePasswordAuthenticationToken(
-                            user,
+                            clerkUserId, // Use userId as principal name
                             null,
                             authorities
                         );
                         accessor.setUser(authentication);
+                        log.debug("WebSocket authentication set for user: {}", clerkUserId);
                     });
                 } catch (Exception e) {
                     log.error("WebSocket authentication failed", e);
                     return null; // Reject the message
                 }
+            } else {
+                log.warn("No Authorization header found in WebSocket connection");
+                return null; // Reject the message
             }
         }
         

@@ -19,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,13 +34,52 @@ public class MessageServiceImpl implements MessageService {
     private final UserRepository userRepository;
     private final ChannelRepository channelRepository;
 
+    private String formatInstant(Instant instant) {
+        if (instant == null) {
+            log.warn("Received null instant to format");
+            return null;
+        }
+        String isoString = instant.toString();
+        log.info("Formatting instant: {} to ISO string: {}", instant, isoString);
+        return isoString;
+    }
+
+    private MessageDTO toDTO(Message message, String username) {
+        log.info("Converting message to DTO - Message ID: {}, Raw createdAt: {}", 
+            message.getId(), message.getCreatedAt());
+        
+        String createdAtStr = formatInstant(message.getCreatedAt());
+        String editedAtStr = formatInstant(message.getEditedAt());
+        
+        log.info("Message {} timestamp conversion - Original: {}, Formatted: {}", 
+            message.getId(), message.getCreatedAt(), createdAtStr);
+        
+        MessageDTO dto = MessageDTO.builder()
+                .id(message.getId())
+                .content(message.getContent())
+                .createdBy(message.getCreatedBy().getUserId())
+                .username(username)
+                .channelId(message.getChannel().getId())
+                .parentId(message.getParent() != null ? message.getParent().getId() : null)
+                .createdAt(createdAtStr)
+                .editedAt(editedAtStr)
+                .isEdited(message.isEdited())
+                .reactions(Collections.emptySet())
+                .replyCount(0)
+                .topReplies(Collections.emptyList())
+                .build();
+        
+        log.info("Created DTO for message {} with createdAt: {}", message.getId(), dto.getCreatedAt());
+        return dto;
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Page<MessageDTO> getLatestParentMessagesWithDetails(UUID channelId, Pageable pageable) {
         log.debug("Fetching parent messages for channel: {} with pagination: {}", channelId, pageable);
 
         // Get authenticated user
-        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        String userId = ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUserId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
@@ -100,19 +140,7 @@ public class MessageServiceImpl implements MessageService {
             // Map replies
             List<MessageDTO> replyDTOs = repliesByParentId.getOrDefault(parent.getId(), Collections.emptyList())
                     .stream()
-                    .map(reply -> MessageDTO.builder()
-                            .id(reply.getId())
-                            .content(reply.getContent())
-                            .createdBy(userIdToUsername.get(reply.getCreatedBy().getUserId()))
-                            .channelId(reply.getChannel().getId())
-                            .parentId(reply.getParent().getId())
-                            .createdAt(reply.getCreatedAt())
-                            .editedAt(reply.getEditedAt())
-                            .isEdited(reply.isEdited())
-                            .reactions(Collections.emptySet())
-                            .replyCount(0)
-                            .topReplies(Collections.emptyList())
-                            .build())
+                    .map(reply -> toDTO(reply, userIdToUsername.get(reply.getCreatedBy().getUserId())))
                     .collect(Collectors.toList());
 
             return MessageDTO.builder()
@@ -121,8 +149,8 @@ public class MessageServiceImpl implements MessageService {
                     .createdBy(userIdToUsername.get(parent.getCreatedBy().getUserId()))
                     .channelId(parent.getChannel().getId())
                     .parentId(null)
-                    .createdAt(parent.getCreatedAt())
-                    .editedAt(parent.getEditedAt())
+                    .createdAt(formatInstant(parent.getCreatedAt()))
+                    .editedAt(formatInstant(parent.getEditedAt()))
                     .isEdited(parent.isEdited())
                     .reactions(reactionDTOs)
                     .replyCount(replies.size())
@@ -140,7 +168,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public MessageDTO handleIncomingMessage(MessageDTO messageDto, UUID channelId, String userId) {
-        log.debug("Processing incoming message for channel {} from user {}", channelId, userId);
+        log.info("Processing incoming message for channel {} from user {}", channelId, userId);
         
         // Validate input parameters
         if (channelId == null) {
@@ -168,12 +196,13 @@ public class MessageServiceImpl implements MessageService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
-        // Create and save message
+        // Create message with explicit timestamp
         Message message = Message.builder()
                 .content(messageDto.getContent())
                 .channel(channel)
                 .createdBy(user)
                 .type(Message.Type.TEXT)
+                .createdAt(Instant.now()) // Explicitly set the timestamp
                 .parent(messageDto.getParentId() != null ? messageRepository.findById(messageDto.getParentId())
                         .orElseThrow(() -> new EntityNotFoundException("Parent message not found: " + messageDto.getParentId()))
                         : null)
@@ -181,32 +210,71 @@ public class MessageServiceImpl implements MessageService {
 
         try {
             message = messageRepository.save(message);
-            log.debug("Saved message {} to channel {}", message.getId(), channelId);
+            // Force a flush to ensure the timestamp is set
+            messageRepository.flush();
+            log.info("Saved message {} to channel {} with createdAt: {} (raw)", 
+                message.getId(), channelId, message.getCreatedAt());
         } catch (Exception e) {
             log.error("Failed to save message to channel {}: {}", channelId, e.getMessage());
             throw new RuntimeException("Failed to save message", e);
         }
 
         // Convert to DTO and return
-        return MessageDTO.builder()
-                .id(message.getId())
-                .content(message.getContent())
-                .createdBy(user.getUsername())
-                .channelId(channel.getId())
-                .parentId(message.getParent() != null ? message.getParent().getId() : null)
-                .createdAt(message.getCreatedAt())
-                .editedAt(message.getEditedAt())
-                .isEdited(message.isEdited())
-                .reactions(Collections.emptySet())
-                .replyCount(0)
-                .topReplies(Collections.emptyList())
-                .build();
+        MessageDTO resultDto = toDTO(message, user.getUsername());
+        log.info("Returning DTO for message {} with createdAt: {}", 
+            resultDto.getId(), resultDto.getCreatedAt());
+        return resultDto;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<MessageDTO> getLatestParentMessages(UUID channelId) {
-        return getLatestParentMessagesWithDetails(channelId, Pageable.ofSize(20)).getContent();
+    public Page<MessageDTO> getLatestParentMessages(UUID channelId) {
+        String userId = ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUserId();
+        // Get user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not founddd: " + userId));
+
+        // Get channel and verify access
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new EntityNotFoundException("Channel not found: " + channelId));
+
+        // Check if user has access to channel
+        if (channel.getType() != Channel.Type.PUBLIC) {
+            boolean isMember = channelRepository.isUserMember(channelId, userId);
+            if (!isMember) {
+                log.warn("User {} attempted to access messages in private channel {}", userId, channelId);
+                throw new AccessDeniedException("You do not have access to this channel");
+            }
+        }
+
+        // Get messages with pagination
+        Page<Message> messages = messageRepository.findParentMessagesByChannelId(
+            channelId, 
+            Pageable.ofSize(20)
+        );
+
+        // Convert to DTOs
+        return messages.map(message -> MessageDTO.builder()
+                .id(message.getId())
+                .content(message.getContent())
+                .createdBy(message.getCreatedBy().getUsername())
+                .channelId(message.getChannel().getId())
+                .parentId(null) // These are parent messages
+                .createdAt(formatInstant(message.getCreatedAt()))
+                .editedAt(formatInstant(message.getEditedAt()))
+                .isEdited(message.isEdited())
+                .reactions(message.getReactions().stream()
+                    .map(reaction -> ReactionDTO.builder()
+                        .id(reaction.getId())
+                        .emoji(reaction.getEmoji())
+                        .userId(reaction.getUser().getUserId())
+                        .username(reaction.getUser().getUsername())
+                        .messageId(reaction.getMessage().getId())
+                        .build())
+                    .collect(Collectors.toSet()))
+                .replyCount(messageRepository.countByParentId(message.getId()))
+                .topReplies(Collections.emptyList()) // Not including replies in this view
+                .build());
     }
 
     private void validateMessageContent(String content) {
@@ -214,11 +282,7 @@ public class MessageServiceImpl implements MessageService {
             throw new ValidationException("Message content cannot be empty");
         }
         if (content.length() > MAX_MESSAGE_LENGTH) {
-            throw new ValidationException("Message content exceeds maximum length of " + MAX_MESSAGE_LENGTH);
-        }
-        // Add additional content validation if needed
-        if (content.trim().length() < 1) {
-            throw new ValidationException("Message content must contain at least one non-whitespace character");
+            throw new ValidationException("Message content cannot exceed " + MAX_MESSAGE_LENGTH + " characters");
         }
     }
 } 

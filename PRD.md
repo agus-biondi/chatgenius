@@ -30,6 +30,10 @@ ChatGenius is a real-time messaging platform that combines the familiarity of Un
 - Real-time message delivery
 - Message threading
 - Message reactions with emojis
+  - One reaction per user per emoji per message
+  - "Delete then insert" approach for reaction updates
+  - Real-time reaction updates via WebSocket
+  - Support for standard emoji set via emoji-mart
 - File attachments
 - Message search across accessible channels
 - Message editing and deletion

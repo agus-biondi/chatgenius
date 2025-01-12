@@ -2,7 +2,10 @@ import { MessageDTO, Channel } from '../../types';
 import { logger } from '../../utils/logger';
 import { TerminalCommand } from '../ui/TerminalCommand';
 import { TerminalComment } from '../ui/TerminalComment';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useRef, useEffect } from 'react';
+import { MessageListItem } from './MessageListItem';
+import { useMessageReactions } from '../../hooks/websocket/useMessageReactions';
+import { useChannelMessages } from '../../hooks/chat/useChannelMessages';
 
 interface MessageListProps {
     messages: MessageDTO[];
@@ -11,6 +14,24 @@ interface MessageListProps {
 
 const MessageListBase = ({ messages, channel }: MessageListProps) => {
     logger.debug('render', 'MessageList rendered', { messageCount: messages.length });
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Subscribe to new messages
+    useChannelMessages({
+        channelId: channel?.id || '',
+        enabled: !!channel
+    });
+
+    const messageIds = useMemo(() => messages.map(m => m.id), [messages]);
+    const { reactionsByMessageId, addReaction, removeReaction } = useMessageReactions({
+        messageIds: messages.map((message) => message.id),
+        enabled: true
+    });
+
+    // Scroll to bottom when messages change
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     const emptyStateContent = useMemo(() => (
         <div className="flex-1 flex items-center justify-center">
@@ -23,29 +44,25 @@ const MessageListBase = ({ messages, channel }: MessageListProps) => {
         </div>
     ), [channel?.name]);
 
-    const messagesList = useMemo(() => (
-        messages.map((message) => (
-            <div key={message.id} className="message">
-                <div className="flex items-center gap-2">
-                    <span className="text-[#6edb71] font-bold">{message.username}</span>
-                    <span className="text-[#9ba8b9] text-sm">
-                        {new Date(message.createdAt).toLocaleTimeString()}
-                    </span>
-                    {message.isEdited && (
-                        <span className="text-[#9ba8b9] text-sm">(edited)</span>
-                    )}
-                    <span className="text-[#9ba8b9] text-xs opacity-50">
-                        {new Date(message.createdAt).toLocaleDateString()}
-                    </span>
-                </div>
-                <p className="mt-1 text-[#b8cceb] whitespace-pre-wrap">{message.content}</p>
-            </div>
-        ))
-    ), [messages]);
+    const messageItems = useMemo(() => {
+        return messages.map((message) => (
+            <MessageListItem
+                key={message.id}
+                message={message}
+                channel={channel}
+                reactions={reactionsByMessageId[message.id] || []}
+                onAddReaction={(emoji) => addReaction(message.id, emoji)}
+                onRemoveReaction={(emoji) => removeReaction(message.id, emoji)}
+            />
+        ));
+    }, [messages, reactionsByMessageId, addReaction, removeReaction, channel]);
 
     return (
-        <div className="flex flex-col gap-4 p-4 h-full">
-            {messages.length === 0 ? emptyStateContent : messagesList}
+        <div className="h-full p-4">
+            <div className="flex flex-col gap-2">
+                {messages.length === 0 ? emptyStateContent : messageItems}
+                <div ref={messagesEndRef} />
+            </div>
         </div>
     );
 };

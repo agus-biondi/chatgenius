@@ -1,57 +1,69 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { webSocketManager } from '../../services/websocket/WebSocketManager';
 import { logger } from '../../utils/logger';
 
-export function useWebSocketConnection() {
-  const { getToken } = useAuth();
-  const isConnecting = useRef(false);
+export const useWebSocketConnection = () => {
+  const { getToken, isSignedIn } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const checkConnection = () => {
-      const connected = webSocketManager.isConnected();
-      setIsConnected(connected);
+    let isSubscribed = true;
+    let reconnectTimeout: NodeJS.Timeout;
+
+    const handleConnect = () => {
+      if (isSubscribed) {
+        logger.debug('state', 'WebSocket connected');
+        setIsConnected(true);
+      }
     };
 
-    const setupConnection = async () => {
-      if (isConnecting.current) {
-        logger.debug('state', 'WebSocket connection setup already in progress');
+    const handleDisconnect = () => {
+      if (isSubscribed) {
+        logger.debug('state', 'WebSocket disconnected');
+        setIsConnected(false);
+      }
+    };
+
+    const connectWebSocket = async () => {
+      if (!isSignedIn) {
+        logger.debug('state', 'User not signed in, skipping connection');
         return;
       }
 
-      isConnecting.current = true;
       try {
         const token = await getToken();
-        if (!token) {
-          logger.error('state', 'No authentication token available');
-          return;
-        }
+        if (!token || !isSubscribed) return;
 
-        logger.info('state', 'Setting up WebSocket connection');
+        logger.debug('state', 'Connecting to WebSocket');
         await webSocketManager.connect(token);
-        checkConnection();
       } catch (error) {
-        logger.error('state', 'Failed to setup WebSocket connection', { 
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      } finally {
-        isConnecting.current = false;
+        logger.error('state', 'Failed to connect to WebSocket', error);
+        if (isSubscribed) {
+          setIsConnected(false);
+        }
       }
     };
 
-    // Check connection immediately and set up periodic checks
-    checkConnection();
-    const interval = setInterval(checkConnection, 1000);
+    // Add event listeners
+    webSocketManager.onConnect(handleConnect);
+    webSocketManager.onDisconnect(handleDisconnect);
 
-    setupConnection();
+    // Initial connection
+    connectWebSocket();
 
+    // Cleanup
     return () => {
-      clearInterval(interval);
-      logger.debug('state', 'Cleaning up WebSocket connection');
+      isSubscribed = false;
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      webSocketManager.offConnect(handleConnect);
+      webSocketManager.offDisconnect(handleDisconnect);
       webSocketManager.disconnect();
+      setIsConnected(false);
     };
-  }, [getToken]);
+  }, [getToken, isSignedIn]);
 
   return { isConnected };
-} 
+}; 

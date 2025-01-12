@@ -1,7 +1,7 @@
 export type UUID = string;
 
 export interface User {
-    id: string;
+    userId: string;
     username: string;
     email: string;
     createdAt: string;
@@ -41,12 +41,14 @@ export interface MessageDTO {
     id: UUID;
     content: string;
     channelId: UUID;
-    userId: string;
-    username: string;
+    createdBy: string;
     createdAt: string;
     editedAt?: string;
     isEdited: boolean;
     parentId?: UUID;
+    reactions: ReactionDTO[];
+    replyCount: number;
+    topReplies?: MessageDTO[];
 }
 
 export interface CreateChannelRequest {
@@ -59,4 +61,12 @@ export interface CreateChannelRequest {
 export interface CreateMessageRequest {
     content: string;
     parentId?: UUID;
+}
+
+export interface ReactionDTO {
+    id: string;
+    emoji: string;
+    userId: string;
+    username: string;
+    messageId: string;
 } 

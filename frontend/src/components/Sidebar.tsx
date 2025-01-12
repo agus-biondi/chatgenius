@@ -176,7 +176,7 @@ const SidebarBase: React.FC<SidebarProps> = ({
                   <div className="pl-4 space-y-2">
                     {users.map((user) => (
                       <SidebarListItem
-                        key={user.id}
+                        key={user.userId}
                         name={user.username}
                       />
                     ))}

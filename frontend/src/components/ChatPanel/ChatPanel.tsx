@@ -48,15 +48,21 @@ const ChatPanelBase = ({ channelId, channel }: ChatPanelProps) => {
     }
 
     return (
-        <TerminalContainer className="h-full">
+        <TerminalContainer className="h-[calc(100vh-8rem)] chat-panel">
             <div className="flex h-full">
-                <div className={`flex-1 flex flex-col ${isRightPanelExpanded ? 'mr-80' : 'mr-10'}`}>
-                    <MessageList messages={messages || []} channel={channel} />
-                    <MessageInput 
-                        channelId={channelId} 
-                        channelName={channel?.name || ''} 
-                        onSendMessage={sendMessage} 
-                    />
+                <div className={`flex-1 flex flex-col h-full ${isRightPanelExpanded ? 'mr-80' : 'mr-10'}`}>
+                    <div className="flex flex-col h-full">
+                        <div className="flex-1 min-h-0 overflow-y-auto">
+                            <MessageList messages={messages?.content || []} channel={channel} />
+                        </div>
+                        <div className="flex-shrink-0 max-h-[30vh]">
+                            <MessageInput 
+                                channelId={channelId} 
+                                channelName={channel?.name || ''} 
+                                onSendMessage={sendMessage} 
+                            />
+                        </div>
+                    </div>
                 </div>
                 <RightPanel
                     channel={channel}

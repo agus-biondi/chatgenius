@@ -4,7 +4,7 @@ import apiClient from './apiClient';
 import { logger } from '../utils/logger';
 
 export interface User {
-  id: string;
+  userId: string;
   username: string;
   email: string;
   createdAt: string;

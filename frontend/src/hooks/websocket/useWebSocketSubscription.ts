@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 import { webSocketManager } from '../../services/websocket/WebSocketManager';
 import { MessageDTO } from '../../types';
 import { logger } from '../../utils/logger';
@@ -18,42 +18,24 @@ export function useWebSocketSubscription({
   enabled = true,
 }: UseWebSocketSubscriptionOptions) {
   const { isConnected } = useWebSocketConnection();
-  const isSettingUp = useRef(false);
 
-  const setupWebSocket = useCallback(async () => {
-    if (isSettingUp.current) {
-      logger.debug('state', 'WebSocket subscription setup already in progress');
-      return;
+  // Filter messages for this channel
+  const handleMessage = useCallback((message: MessageDTO) => {
+    if (message.channelId === channelId) {
+      onMessage(message);
     }
+  }, [channelId, onMessage]);
 
-    isSettingUp.current = true;
-    try {
-      logger.debug('state', 'Subscribing to channel', { channelId });
-      await webSocketManager.subscribeToChannel(
-        channelId,
-        (message) => {
-          logger.debug('state', 'Received message', { channelId, messageId: message.id });
-          onMessage(message);
-        },
-        onTyping ? (username) => {
-          logger.debug('state', 'Received typing event', { channelId, username });
-          onTyping(username);
-        } : undefined
-      );
-    } catch (error) {
-      logger.error('state', 'Failed to setup WebSocket subscription', { 
-        channelId, 
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    } finally {
-      isSettingUp.current = false;
+  // Filter typing events for this channel
+  const handlePresence = useCallback((presenceChannelId: string, userId: string) => {
+    if (presenceChannelId === channelId && onTyping) {
+      onTyping(userId);
     }
-  }, [channelId, onMessage, onTyping]);
+  }, [channelId, onTyping]);
 
   useEffect(() => {
     if (!enabled || !channelId || !isConnected) {
-      logger.debug('state', 'WebSocket subscription disabled, no channelId, or not connected', { 
-        enabled, 
+      logger.debug('state', 'WebSocket subscription not enabled', { 
         channelId,
         isConnected 
       });
@@ -61,18 +43,21 @@ export function useWebSocketSubscription({
     }
 
     logger.debug('state', 'Setting up WebSocket subscription', { channelId });
-    setupWebSocket();
+    
+    // Add handlers
+    webSocketManager.addMessageHandler(handleMessage);
+    if (onTyping) {
+      webSocketManager.addPresenceHandler(handlePresence);
+    }
 
     return () => {
       logger.debug('state', 'Cleaning up WebSocket subscription', { channelId });
-      webSocketManager.unsubscribeFromChannel(channelId).catch((error) => {
-        logger.error('state', 'Failed to unsubscribe from channel', { 
-          channelId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      });
+      webSocketManager.removeMessageHandler(handleMessage);
+      if (onTyping) {
+        webSocketManager.removePresenceHandler(handlePresence);
+      }
     };
-  }, [channelId, enabled, isConnected, setupWebSocket]);
+  }, [channelId, enabled, isConnected, handleMessage, handlePresence, onTyping]);
 
   return {
     sendMessage: useCallback(async (content: string) => {
@@ -82,14 +67,6 @@ export function useWebSocketSubscription({
       }
       logger.debug('state', 'Sending message', { channelId, content });
       return webSocketManager.sendMessage(channelId, content);
-    }, [channelId, isConnected]),
-    sendTypingEvent: useCallback(async () => {
-      if (!isConnected) {
-        logger.warn('state', 'Cannot send typing event - WebSocket not connected');
-        return;
-      }
-      logger.debug('state', 'Sending typing event', { channelId });
-      return webSocketManager.sendTypingEvent(channelId);
     }, [channelId, isConnected]),
   };
 } 

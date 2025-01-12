@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from './apiClient';
-import { User } from './userService';
 import { logger } from '../utils/logger';
 import { MessageDTO } from '../types';
 
@@ -16,14 +15,22 @@ export interface Message {
   isEdited: boolean;
 }
 
-export const fetchLatestParentMessages = async (channelId: string): Promise<MessageDTO[]> => {
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
+export const fetchLatestParentMessages = async (channelId: string): Promise<PageResponse<MessageDTO>> => {
   logger.debug('api', `Fetching latest parent messages for channel ${channelId}`);
   const response = await apiClient.get(`/channels/${channelId}/messages/parents`);
   return response.data;
 };
 
 export const useLatestParentMessages = (channelId: string) => {
-  return useQuery<MessageDTO[]>({
+  return useQuery<PageResponse<MessageDTO>>({
     queryKey: ['messages', channelId, 'parents'],
     queryFn: () => fetchLatestParentMessages(channelId),
     staleTime: 1000 * 5 * 60, // 5 minutes

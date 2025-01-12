@@ -1,0 +1,107 @@
+@startuml Reaction Class Diagram
+
+package "Entity Layer" {
+    class Reaction {
+        - id: UUID
+        - emoji: String
+        - user: User
+        - message: Message
+        + getId(): UUID
+        + getEmoji(): String
+        + getUser(): User
+        + getMessage(): Message
+    }
+
+    class Message {
+        - id: UUID
+        - content: String
+        - user: User
+        - channel: Channel
+        - reactions: Set<Reaction>
+        + getId(): UUID
+        + getContent(): String
+        + getUser(): User
+        + getChannel(): Channel
+        + getReactions(): Set<Reaction>
+    }
+
+    class User {
+        - userId: String
+        - username: String
+        - email: String
+        - role: Role
+        + getUserId(): String
+        + getUsername(): String
+        + getEmail(): String
+        + getRole(): Role
+    }
+}
+
+package "Repository Layer" {
+    interface ReactionRepository {
+        + findByUser_IdAndMessage_IdAndEmoji(userId: String, messageId: UUID, emoji: String): Optional<Reaction>
+        + findAllByMessage_Id(messageId: UUID): List<Reaction>
+        + deleteByUser_IdAndMessage_IdAndEmoji(userId: String, messageId: UUID, emoji: String)
+        + countByMessage_IdAndEmoji(messageId: UUID, emoji: String): long
+    }
+}
+
+package "Service Layer" {
+    interface ReactionService {
+        + addReaction(userId: String, messageId: UUID, emoji: String): ReactionDTO
+        + removeReaction(userId: String, messageId: UUID, emoji: String): void
+        + getReactionsForMessage(messageId: UUID): List<ReactionDTO>
+        + getReactionCount(messageId: UUID, emoji: String): long
+    }
+
+    class ReactionServiceImpl {
+        - reactionRepository: ReactionRepository
+        - messageRepository: MessageRepository
+        - userRepository: UserRepository
+        + addReaction(userId: String, messageId: UUID, emoji: String): ReactionDTO
+        + removeReaction(userId: String, messageId: UUID, emoji: String): void
+        + getReactionsForMessage(messageId: UUID): List<ReactionDTO>
+        + getReactionCount(messageId: UUID, emoji: String): long
+    }
+}
+
+package "Controller Layer" {
+    class ReactionController {
+        - reactionService: ReactionService
+        - webSocketEventHandler: WebSocketEventHandler
+        + addReaction(userId: String, messageId: UUID, emoji: String): ResponseEntity<ReactionDTO>
+        + removeReaction(userId: String, messageId: UUID, emoji: String): ResponseEntity<Void>
+        + getReactions(messageId: UUID): ResponseEntity<List<ReactionDTO>>
+        + getReactionCount(messageId: UUID, emoji: String): ResponseEntity<Long>
+    }
+}
+
+package "WebSocket Layer" {
+    class WebSocketEventHandler {
+        - messagingTemplate: SimpMessagingTemplate
+        - reactionService: ReactionService
+        + broadcastReactionUpdate(messageId: UUID): void
+    }
+}
+
+package "DTO Layer" {
+    class ReactionDTO {
+        + id: UUID
+        + emoji: String
+        + userId: String
+        + username: String
+        + messageId: UUID
+    }
+}
+
+' Relationships
+Message "1" *-- "0..*" Reaction : contains
+Reaction "*" -- "1" User : belongs to
+ReactionController --> ReactionService : uses
+ReactionController --> WebSocketEventHandler : uses
+WebSocketEventHandler --> ReactionService : uses
+ReactionService <|.. ReactionServiceImpl : implements
+ReactionServiceImpl --> ReactionRepository : uses
+ReactionRepository --> Reaction : manages
+
+@enduml 

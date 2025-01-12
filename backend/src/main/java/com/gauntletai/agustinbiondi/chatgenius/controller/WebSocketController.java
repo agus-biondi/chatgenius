@@ -20,46 +20,48 @@ public class WebSocketController {
     private final MessageService messageService;
 
     @MessageMapping("/channels/{channelId}/messages")
-    @SendTo("/topic/channels/{channelId}")
+    @SendTo("/topic/messages")
     public MessageDTO handleMessage(
             @DestinationVariable UUID channelId,
             MessageDTO messageDto,
             Principal principal
     ) {
+        String userId = principal.getName();
         try {
             log.info("Received message from user {} in channel {}: {}", 
-                    principal.getName(), channelId, messageDto.getContent());
+                    userId, channelId, messageDto.getContent());
             
             if (messageDto == null || messageDto.getContent() == null) {
                 throw new IllegalArgumentException("Message content cannot be null");
             }
 
-            MessageDTO processedMessage = messageService.handleIncomingMessage(messageDto, channelId, principal.getName());
+            MessageDTO processedMessage = messageService.handleIncomingMessage(messageDto, channelId, userId);
             
-            log.info("Broadcasting message {} to channel {}", 
-                    processedMessage.getId(), channelId);
+            log.info("Broadcasting message {} to global messages topic", 
+                    processedMessage.getId());
             
             return processedMessage;
         } catch (IllegalArgumentException e) {
             log.warn("Invalid message received from user {} in channel {}: {}", 
-                    principal.getName(), channelId, e.getMessage());
+                    userId, channelId, e.getMessage());
             throw e;
         } catch (Exception e) {
             log.error("Error processing message from user {} in channel {}: {}", 
-                    principal.getName(), channelId, e.getMessage(), e);
+                    userId, channelId, e.getMessage(), e);
             throw e;
         }
     }
 
     @MessageMapping("/channels/{channelId}/typing")
-    @SendTo("/topic/channels/{channelId}/typing")
+    @SendTo("/topic/presence")
     public String handleTypingEvent(
             @DestinationVariable UUID channelId,
             Principal principal
     ) {
+        String userId = principal.getName();
         log.debug("User {} is typing in channel {}", 
-                principal.getName(), channelId);
+                userId, channelId);
         
-        return principal.getName();
+        return userId;
     }
 } 
