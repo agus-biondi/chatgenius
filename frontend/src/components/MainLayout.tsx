@@ -93,12 +93,12 @@ const MainLayoutBase: React.FC = () => {
       </div>
 
       {/* Content area with sidebar and main content */}
-      <div className="flex flex-1 gap-8 px-8 py-4">
+      <div className="flex flex-1 gap-8 px-8 py-4 min-h-0 overflow-hidden">
         {/* Sidebar */}
         <Sidebar {...sidebarProps} />
 
         {/* Main Content Area */}
-        <main className="flex-1">
+        <main className="flex-1 min-h-0">
           <ChatPanel {...chatPanelProps} />
         </main>
       </div>
