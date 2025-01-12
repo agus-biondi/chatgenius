@@ -25,11 +25,6 @@ const MainLayoutBase: React.FC = () => {
   const createChannelMutation = useCreateChannel();
   const deleteChannelMutation = useDeleteChannel();
 
-  const handleChannelsChange = useCallback(() => {
-    logger.debug('state', 'Invalidating channels query cache');
-    queryClient.invalidateQueries({ queryKey: ['channels'] });
-  }, [queryClient]);
-
   const handleChannelSelect = useCallback((channel: Channel) => {
     setSelectedChannel(channel);
   }, []);
@@ -42,12 +37,11 @@ const MainLayoutBase: React.FC = () => {
         memberIds: []
       });
       createChannelModal.closeModal();
-      handleChannelsChange();
     } catch (error) {
       logger.error('state', 'Failed to create channel', { error });
       throw error;
     }
-  }, [createChannelMutation, createChannelModal, handleChannelsChange]);
+  }, [createChannelMutation, createChannelModal]);
 
   const handleDeleteChannel = useCallback(async () => {
     if (!channelToDelete) return;
@@ -64,12 +58,11 @@ const MainLayoutBase: React.FC = () => {
       }
       
       setChannelToDelete(null);
-      handleChannelsChange();
     } catch (error) {
       logger.error('state', 'Failed to delete channel', { error });
       throw error;
     }
-  }, [deleteChannelMutation, deleteChannelModal, channelToDelete, handleChannelsChange, selectedChannel, channels]);
+  }, [deleteChannelMutation, deleteChannelModal, channelToDelete, selectedChannel, channels]);
 
   const openDeleteModal = useCallback((channel: Channel) => {
     setChannelToDelete(channel);
@@ -86,12 +79,11 @@ const MainLayoutBase: React.FC = () => {
   const sidebarProps = useMemo(() => ({
     channels,
     users,
-    onChannelsChange: handleChannelsChange,
     onChannelSelect: handleChannelSelect,
     selectedChannel,
     onCreateChannel: createChannelModal.openModal,
     onDeleteChannel: openDeleteModal
-  }), [channels, users, handleChannelsChange, handleChannelSelect, selectedChannel, createChannelModal.openModal, openDeleteModal]);
+  }), [channels, users, handleChannelSelect, selectedChannel, createChannelModal.openModal, openDeleteModal]);
 
   return (
     <div className="flex flex-col h-screen bg-[var(--terminal-black)]">

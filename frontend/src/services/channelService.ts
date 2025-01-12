@@ -126,10 +126,21 @@ export const useCreateChannel = () => {
   
   return useMutation({
     mutationFn: channelService.createChannel,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channels', 'public'] });
-      queryClient.invalidateQueries({ queryKey: ['channels', 'user'] });
-      queryClient.invalidateQueries({ queryKey: ['channels', 'available'] });
+    onSuccess: (newChannel) => {
+      // Optimistically update all channel lists
+      const queryKeys = [
+        ['channels', 'public'],
+        ['channels', 'user'],
+        ['channels', 'available']
+      ];
+
+      queryKeys.forEach(queryKey => {
+        queryClient.setQueryData(queryKey, (old: Channel[] | undefined) => {
+          if (!old) return [newChannel];
+          if (old.some(ch => ch.id === newChannel.id)) return old;
+          return [...old, newChannel];
+        });
+      });
     },
   });
 };
@@ -152,9 +163,24 @@ export const useDeleteChannel = () => {
   
   return useMutation({
     mutationFn: channelService.deleteChannel,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channels'] });
-    },
+    onMutate: async (channelId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['channels'] });
+
+      // Update all channel-related queries optimistically
+      const queryKeys = [
+        ['channels', 'public'],
+        ['channels', 'user'],
+        ['channels', 'available']
+      ];
+
+      queryKeys.forEach(queryKey => {
+        queryClient.setQueryData(queryKey, (old: Channel[] | undefined) => {
+          if (!old) return [];
+          return old.filter(ch => ch.id !== channelId);
+        });
+      });
+    }
   });
 };
 

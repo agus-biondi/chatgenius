@@ -15,7 +15,6 @@ import { SidebarListItem } from './ui/SidebarListItem';
 interface SidebarProps {
   channels: Channel[];
   users: User[];
-  onChannelsChange?: () => void;
   onChannelSelect: (channel: Channel) => void;
   selectedChannel: Channel | null;
   onCreateChannel: () => void;
@@ -25,7 +24,6 @@ interface SidebarProps {
 const SidebarBase: React.FC<SidebarProps> = ({ 
   channels, 
   users, 
-  onChannelsChange,
   onChannelSelect,
   selectedChannel,
   onCreateChannel,
@@ -37,13 +35,38 @@ const SidebarBase: React.FC<SidebarProps> = ({
 
   const handleChannelCreated = useCallback((channel: Channel) => {
     logger.debug('state', 'Channel created event received', { channelId: channel.id });
-    onChannelsChange?.();
-  }, [onChannelsChange]);
+    // Update the cache directly for all channel-related queries
+    const queryKeys = [
+      ['channels', 'public'],
+      ['channels', 'user'],
+      ['channels', 'available']
+    ];
+
+    queryKeys.forEach(queryKey => {
+      queryClient.setQueryData(queryKey, (old: Channel[] | undefined) => {
+        if (!old) return [channel];
+        if (old.some(ch => ch.id === channel.id)) return old;
+        return [...old, channel];
+      });
+    });
+  }, [queryClient]);
 
   const handleChannelDeleted = useCallback((channel: Channel) => {
     logger.debug('state', 'Channel deleted event received', { channelId: channel.id });
-    onChannelsChange?.();
-  }, [onChannelsChange]);
+    // Update the cache directly for all channel-related queries
+    const queryKeys = [
+      ['channels', 'public'],
+      ['channels', 'user'],
+      ['channels', 'available']
+    ];
+
+    queryKeys.forEach(queryKey => {
+      queryClient.setQueryData(queryKey, (old: Channel[] | undefined) => {
+        if (!old) return [];
+        return old.filter(ch => ch.id !== channel.id);
+      });
+    });
+  }, [queryClient]);
 
   // Subscribe to channel events
   useChannelEvents({
@@ -147,12 +170,18 @@ const SidebarBase: React.FC<SidebarProps> = ({
           {usersOpen && (
             <div id="users-list" className="mt-2">
               <div className="pl-4 space-y-2">
-                {users.map((user) => (
-                  <SidebarListItem
-                    key={user.id}
-                    name={user.username}
-                  />
-                ))}
+                {users.length === 0 ? (
+                  <TerminalOutput key="no-users" message="No users found." className="terminal-output-info" />
+                ) : (
+                  <div className="pl-4 space-y-2">
+                    {users.map((user) => (
+                      <SidebarListItem
+                        key={user.id}
+                        name={user.username}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

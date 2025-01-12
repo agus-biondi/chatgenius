@@ -207,6 +207,12 @@ export class WebSocketManager {
     onMessage: (message: MessageDTO) => void,
     onTyping?: (username: string) => void
   ): Promise<void> {
+    // Validate channelId
+    if (!channelId || channelId.trim() === '') {
+      logger.warn('state', 'Attempted to subscribe with invalid channelId', { channelId });
+      throw new Error('Invalid channelId: Channel ID is required');
+    }
+
     await this.ensureConnected();
 
     // Subscribe to messages
@@ -259,6 +265,12 @@ export class WebSocketManager {
   }
 
   async sendMessage(channelId: string, content: string, parentId?: string): Promise<void> {
+    // Validate channelId
+    if (!channelId || channelId.trim() === '') {
+      logger.warn('state', 'Attempted to send message with invalid channelId', { channelId });
+      throw new Error('Invalid channelId: Channel ID is required');
+    }
+
     await this.ensureConnected();
 
     const messageRequest: CreateMessageRequest = {
@@ -274,6 +286,12 @@ export class WebSocketManager {
   }
 
   async sendTypingEvent(channelId: string): Promise<void> {
+    // Validate channelId
+    if (!channelId || channelId.trim() === '') {
+      logger.warn('state', 'Attempted to send typing event with invalid channelId', { channelId });
+      throw new Error('Invalid channelId: Channel ID is required');
+    }
+
     await this.ensureConnected();
 
     this.client.publish({
