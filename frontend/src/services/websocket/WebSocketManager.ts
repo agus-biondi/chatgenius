@@ -1,8 +1,14 @@
 import { Client, Message, StompSubscription } from '@stomp/stompjs';
 import { logger } from '../../utils/logger';
-import { MessageDTO, NotificationDTO } from '../../types';
+import { MessageDTO, NotificationDTO, Channel } from '../../types';
+import SockJS from 'sockjs-client';
 
 type PresenceStatus = 'online' | 'offline' | 'away';
+
+interface ChannelEvent {
+  type: 'CREATED' | 'DELETED';
+  channel: Channel;
+}
 
 export class WebSocketManager {
   private client: Client;
@@ -10,17 +16,25 @@ export class WebSocketManager {
   private messageHandlers: Map<string, ((message: MessageDTO) => void)[]> = new Map();
   private typingHandlers: Map<string, ((username: string) => void)[]> = new Map();
   private notificationHandlers: ((notification: NotificationDTO) => void)[] = [];
+  private channelEventHandlers: ((event: ChannelEvent) => void)[] = [];
   private connectionPromise: Promise<void> | null = null;
   private static instance: WebSocketManager;
   private reconnectAttempts: number = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
+  private authToken: string | null = null;
+  private isReady: boolean = false;
 
   private constructor() {
     logger.info('state', 'Initializing WebSocket Manager');
     
     this.client = new Client({
-      brokerURL: `${import.meta.env.VITE_WS_URL || 'ws://localhost:8080'}/ws`,
-      connectHeaders: {},
+      webSocketFactory: () => {
+        const socket = new SockJS(`${import.meta.env.VITE_WS_URL || 'http://localhost:8080'}/ws`);
+        return socket;
+      },
+      connectHeaders: this.authToken ? {
+        Authorization: `Bearer ${this.authToken}`
+      } : {},
       debug: (str) => {
         logger.debug('state', 'STOMP Debug', str);
       },
@@ -30,7 +44,7 @@ export class WebSocketManager {
     });
 
     logger.debug('state', 'WebSocket client configured', { 
-      brokerURL: this.client.brokerURL,
+      url: this.client.brokerURL,
       reconnectDelay: 5000,
     });
 
@@ -45,6 +59,7 @@ export class WebSocketManager {
         sessionId: this.client.connected ? 'connected' : 'disconnected'
       });
       this.reconnectAttempts = 0;
+      this.isReady = true;
       this.sendPresenceStatus('online');
     };
 
@@ -73,6 +88,7 @@ export class WebSocketManager {
     // Connection close handler
     this.client.onWebSocketClose = () => {
       logger.warn('state', 'WebSocket connection closed');
+      this.isReady = false;
       this.sendPresenceStatus('offline');
       this.connectionPromise = null;
       
@@ -126,6 +142,9 @@ export class WebSocketManager {
       return this.connectionPromise;
     }
 
+    this.authToken = token;
+    this.isReady = false;
+
     logger.info('state', 'Initiating WebSocket connection', {
       url: this.client.brokerURL
     });
@@ -141,6 +160,7 @@ export class WebSocketManager {
             url: this.client.brokerURL,
             sessionId: this.client.connected ? 'connected' : 'disconnected'
           });
+          this.isReady = true;
           resolve();
         };
 
@@ -167,6 +187,7 @@ export class WebSocketManager {
   }
 
   disconnect(): void {
+    this.isReady = false;
     this.sendPresenceStatus('offline').catch(error => 
       logger.error('state', 'Failed to send offline status before disconnect', { error })
     );
@@ -175,6 +196,7 @@ export class WebSocketManager {
     this.messageHandlers.clear();
     this.typingHandlers.clear();
     this.notificationHandlers = [];
+    this.channelEventHandlers = [];
     this.connectionPromise = null;
     this.reconnectAttempts = 0;
     logger.info('state', 'WebSocket connection closed');
@@ -296,13 +318,61 @@ export class WebSocketManager {
     }
   }
 
+  async subscribeToChannelEvents(onEvent: (event: ChannelEvent) => void): Promise<void> {
+    await this.ensureConnected();
+    
+    // Add event handler
+    this.channelEventHandlers.push(onEvent);
+    
+    // Subscribe to channel events if not already subscribed
+    if (!this.subscriptions.has('channel-events')) {
+      const subscription = this.client.subscribe(
+        '/topic/channels/events',
+        (message: Message) => {
+          try {
+            const event = JSON.parse(message.body) as ChannelEvent;
+            logger.debug('state', 'Received channel event', { type: event.type });
+            this.channelEventHandlers.forEach(handler => handler(event));
+          } catch (error) {
+            logger.error('state', 'Failed to parse channel event', { error, body: message.body });
+          }
+        }
+      );
+      this.subscriptions.set('channel-events', subscription);
+      logger.info('state', 'Subscribed to channel events');
+    }
+  }
+
+  async unsubscribeFromChannelEvents(handler: (event: ChannelEvent) => void): Promise<void> {
+    // Remove specific handler
+    this.channelEventHandlers = this.channelEventHandlers.filter(h => h !== handler);
+    
+    // If no handlers left, unsubscribe from channel events
+    if (this.channelEventHandlers.length === 0 && this.subscriptions.has('channel-events')) {
+      const subscription = this.subscriptions.get('channel-events');
+      if (subscription) {
+        subscription.unsubscribe();
+        this.subscriptions.delete('channel-events');
+        logger.info('state', 'Unsubscribed from channel events');
+      }
+    }
+  }
+
+  public isConnected(): boolean {
+    return this.isReady && this.client.connected;
+  }
+
   private async ensureConnected(): Promise<void> {
-    if (!this.client.connected) {
+    if (!this.isConnected()) {
       if (!this.connectionPromise) {
         logger.error('state', 'WebSocket not initialized');
         throw new Error('WebSocket not initialized. Call connect() first.');
       }
       await this.connectionPromise;
+      // Double check after waiting
+      if (!this.isConnected()) {
+        throw new Error('WebSocket connection failed');
+      }
     }
   }
 }

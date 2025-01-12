@@ -1,60 +1,67 @@
 @startuml
-actor Client
-participant "WebSocket Endpoint (/ws)" as WS
-participant "ClerkHandshakeInterceptor" as HandshakeInterceptor
-participant "ClerkTokenValidator" as TokenValidator
-participant "ClerkChannelInterceptor" as ChannelInterceptor
-participant "WebSocketController" as Controller
-participant "MessageService" as MessageService
-participant "MessageRepository" as MessageRepo
-participant "UserRepository" as UserRepo
-participant "ChannelRepository" as ChannelRepo
-participant "SimpMessagingTemplate" as MessagingTemplate
+actor User
+participant Sidebar
+participant CreateChannelModal
+participant DeleteChannelModal
+participant APIClient
+participant ReactQuery
+participant MainLayout
+participant useChannelEvents
+participant WebSocketManager
 
-== Establishing WebSocket Connection ==
-Client -> WS: Connect to /ws with\nAuthorization: Bearer {token}
-WS -> HandshakeInterceptor: beforeHandshake(request)
-HandshakeInterceptor -> TokenValidator: validate(token)
-TokenValidator --> HandshakeInterceptor: userId / success
-HandshakeInterceptor --> WS: allow handshake,\nstore userId in session
-WS --> Client: Handshake success (101 Switching Protocols)
 
-== STOMP Connection ==
-Client -> WS: STOMP CONNECT with\nAuthorization header
-WS -> ChannelInterceptor: preSend(CONNECT frame)
-ChannelInterceptor -> UserRepo: findById(userId)
-UserRepo --> ChannelInterceptor: User entity
-ChannelInterceptor -> ChannelInterceptor: create Authentication
-ChannelInterceptor --> WS: set Authentication in SecurityContext
-WS --> Client: STOMP CONNECTED
 
-== Subscribing to a Channel ==
-Client -> WS: STOMP SUBSCRIBE to\n/topic/channels/{channelId}
-WS -> ChannelInterceptor: preSend(SUBSCRIBE frame)
-ChannelInterceptor -> ChannelRepo: verify channel access
-ChannelRepo --> ChannelInterceptor: channel details / access granted
-ChannelInterceptor --> WS: allow subscription
-WS --> Client: SUBSCRIBE ACK
 
-== Sending a Message ==
-Client -> WS: STOMP SEND to\n/app/channels/{channelId}/messages\nPayload: {messageDto}
-WS -> ChannelInterceptor: preSend(SEND frame)
-ChannelInterceptor -> UserRepo: verify user permissions
-UserRepo --> ChannelInterceptor: permissions granted
-ChannelInterceptor --> WS: allow send
-WS -> Controller: handleMessage(channelId, messageDto, Principal)
-Controller -> MessageService: processMessage(messageDto, channelId, userId)
-MessageService -> UserRepo: findById(userId)
-UserRepo --> MessageService: User entity
-MessageService -> ChannelRepo: findById(channelId)
-ChannelRepo --> MessageService: Channel entity
-MessageService -> MessageRepo: save(message)
-MessageRepo --> MessageService: savedMessage
-MessageService -> MessagingTemplate: convertAndSend(/topic/channels/{channelId}, savedMessageDto)
-MessagingTemplate --> MessageService: success
-MessageService --> Controller: savedMessageDto
-Controller --> WS: Broadcast savedMessageDto to /topic/channels/{channelId}
-WS --> Client: MESSAGE to /topic/channels/{channelId} {savedMessageDto}
-WS --> "Other Subscribers": MESSAGE to /topic/channels/{channelId} {savedMessageDto}
+participant ChannelController
+participant ChannelService
+participant ChannelRepository
+participant WebSocketEventHandler
+participant SimpMessagingTemplate
+
+==Channel Creation Flow==
+
+User -> Sidebar: Opens Create Channel Modal
+Sidebar -> CreateChannelModal: Render Modal
+User -> CreateChannelModal: Enters channel name and submits
+CreateChannelModal -> APIClient: POST /api/channels with channel data
+APIClient -> ChannelController: Handle POST request
+ChannelController -> ChannelService: createChannel(channelDTO, userId)
+ChannelService -> ChannelRepository: Save new Channel
+ChannelRepository --> ChannelService: Returns saved Channel
+ChannelService --> ChannelController: Returns ChannelDTO
+ChannelController --> APIClient: Response with ChannelDTO
+APIClient --> CreateChannelModal: Success response
+CreateChannelModal --> Sidebar: Close Modal
+ChannelService -> WebSocketEventHandler: broadcastChannelCreated(channelDTO)
+WebSocketEventHandler -> SimpMessagingTemplate: Send to /topic/channels/events
+SimpMessagingTemplate -> WebSocketManager: Deliver channel created event
+WebSocketManager -> useChannelEvents: Receive event
+useChannelEvents -> MainLayout: onChannelsChange callback
+MainLayout -> ReactQuery: invalidateQueries(['channels'])
+ReactQuery -> Sidebar: Refetch channels data
+Sidebar --> User: Display new channel in the list
+
+==Channel Deletion Flow==
+
+User -> Sidebar: Clicks Delete Channel Button
+Sidebar -> DeleteChannelModal: Render Modal
+User -> DeleteChannelModal: Confirms deletion
+DeleteChannelModal -> APIClient: DELETE /api/channels/{channelId}
+APIClient -> ChannelController: Handle DELETE request
+ChannelController -> ChannelService: deleteChannel(channelId, userId)
+ChannelService -> ChannelRepository: Delete Channel
+ChannelRepository --> ChannelService: Deletion confirmed
+ChannelService --> ChannelController: Returns success
+ChannelController --> APIClient: Response with success
+APIClient --> DeleteChannelModal: Success response
+DeleteChannelModal --> Sidebar: Close Modal
+ChannelService -> WebSocketEventHandler: broadcastChannelDeleted(channelId)
+WebSocketEventHandler -> SimpMessagingTemplate: Send to /topic/channels/events
+SimpMessagingTemplate -> WebSocketManager: Deliver channel deleted event
+WebSocketManager -> useChannelEvents: Receive event
+useChannelEvents -> MainLayout: onChannelsChange callback
+MainLayout -> ReactQuery: invalidateQueries(['channels'])
+ReactQuery -> Sidebar: Refetch channels data
+Sidebar --> User: Remove channel from list
 
 @enduml

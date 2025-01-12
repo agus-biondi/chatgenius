@@ -42,7 +42,7 @@ public class SecurityConfig {
             // For example, allowing additional endpoints, disabling certain security features, etc.
             http
                 .csrf(csrf -> csrf
-                    .ignoringRequestMatchers("/ws/**", "/api/webhook/clerk")
+                    .ignoringRequestMatchers("/api/**", "/ws/**")
                 )
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/ws/**", "/api/webhook/clerk", "/api/auth/**").permitAll()
@@ -59,7 +59,7 @@ public class SecurityConfig {
             // Production-specific configurations
             http
                 .csrf(csrf -> csrf
-                    .ignoringRequestMatchers("/ws/**", "/api/webhook/clerk")
+                    .ignoringRequestMatchers("/api/**", "/ws/**")
                 )
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/ws/**", "/api/webhook/clerk", "/api/auth/**").permitAll()

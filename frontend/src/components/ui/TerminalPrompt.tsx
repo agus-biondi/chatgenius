@@ -11,19 +11,27 @@ export const TerminalPrompt: React.FC<TerminalPromptProps> = ({
   onClick, 
   className = '' 
 }) => {
-  return (
-    <div className={`group flex items-center ${className}`}>
+  const content = (
+    <>
       <span className="terminal-prompt-prefix">$</span>
-      {onClick ? (
-        <button 
-          onClick={onClick} 
-          className="terminal-prompt focus-ring"
-        >
-          {command}
-        </button>
-      ) : (
-        <span className="terminal-prompt">{command}</span>
-      )}
+      <span>{command}</span>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button 
+        onClick={onClick} 
+        className={`terminal-prompt focus-ring ${className}`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={`terminal-prompt ${className}`}>
+      {content}
     </div>
   );
 }; 

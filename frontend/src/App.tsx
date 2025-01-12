@@ -1,35 +1,35 @@
 import { BrowserRouter } from 'react-router-dom';
-import { ClerkProvider } from '@clerk/clerk-react';
+import { ClerkProvider, useAuth } from '@clerk/clerk-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AppRoutes } from './routes';
+import { useWebSocketConnection } from './hooks/websocket/useWebSocketConnection';
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const queryClient = new QueryClient();
 
-if (!clerkPubKey) {
-  throw new Error('Missing Clerk Publishable Key');
+function AppContent() {
+  const { isLoaded } = useAuth();
+  useWebSocketConnection();
+
+  if (!isLoaded) {
+    return null; // or a loading spinner
+  }
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-[var(--terminal-black)] text-[var(--text-primary)]">
+        <AppRoutes />
+      </div>
+    </BrowserRouter>
+  );
 }
-
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ClerkProvider publishableKey={clerkPubKey}>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </ClerkProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
+      </QueryClientProvider>
+    </ClerkProvider>
   );
 }
 

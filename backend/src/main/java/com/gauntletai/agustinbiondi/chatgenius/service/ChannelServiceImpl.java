@@ -7,6 +7,7 @@ import com.gauntletai.agustinbiondi.chatgenius.model.User;
 import com.gauntletai.agustinbiondi.chatgenius.repository.ChannelMembershipRepository;
 import com.gauntletai.agustinbiondi.chatgenius.repository.ChannelRepository;
 import com.gauntletai.agustinbiondi.chatgenius.repository.UserRepository;
+import com.gauntletai.agustinbiondi.chatgenius.websocket.WebSocketEventHandler;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class ChannelServiceImpl implements ChannelService {
     private final ChannelRepository channelRepository;
     private final UserRepository userRepository;
     private final ChannelMembershipRepository membershipRepository;
+    private final WebSocketEventHandler webSocketEventHandler;
 
     @Override
     @Transactional
@@ -55,8 +57,12 @@ public class ChannelServiceImpl implements ChannelService {
                     });
         }
 
-        return toDTO(channelRepository.findById(channel.getId())
+        ChannelDTO createdChannel = toDTO(channelRepository.findById(channel.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Channel not found after creation")));
+        
+        webSocketEventHandler.broadcastChannelCreated(createdChannel);
+        
+        return createdChannel;
     }
 
     @Override
@@ -85,7 +91,9 @@ public class ChannelServiceImpl implements ChannelService {
             throw new AccessDeniedException("Only channel creator can delete the channel");
         }
 
+        ChannelDTO deletedChannel = toDTO(channel);
         channelRepository.delete(channel);
+        webSocketEventHandler.broadcastChannelDeleted(deletedChannel);
     }
 
     @Override

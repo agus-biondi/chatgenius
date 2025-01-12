@@ -127,7 +127,9 @@ export const useCreateChannel = () => {
   return useMutation({
     mutationFn: channelService.createChannel,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      queryClient.invalidateQueries({ queryKey: ['channels', 'public'] });
+      queryClient.invalidateQueries({ queryKey: ['channels', 'user'] });
+      queryClient.invalidateQueries({ queryKey: ['channels', 'available'] });
     },
   });
 };

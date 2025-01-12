@@ -49,14 +49,19 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
             type="text"
             value={channelName}
             onChange={(e) => setChannelName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && channelName.trim()) {
+                handleSubmit();
+              }
+            }}
             placeholder="# Enter channel name"
             className="terminal-input"
             autoFocus
           />
           <button
             onClick={handleSubmit}
-            disabled={isLoading}
-            className={`terminal-enter-button ${isLoading ? 'terminal-enter-button-disabled' : ''}`}
+            disabled={isLoading || !channelName.trim()}
+            className={`terminal-enter-button ${(isLoading || !channelName.trim()) ? 'terminal-enter-button-disabled' : ''}`}
             title="Press Enter to create channel"
           >↵</button>
         </div>

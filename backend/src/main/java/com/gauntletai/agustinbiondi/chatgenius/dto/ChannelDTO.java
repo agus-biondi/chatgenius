@@ -20,7 +20,7 @@ public class ChannelDTO {
     private UUID id;
 
     @NotBlank(message = "Channel name cannot be empty")
-    @Size(min = 3, max = 50, message = "Channel name must be between 3 and 50 characters")
+    @Size(min = 1, max = 50, message = "Channel name must be between 3 and 50 characters")
     private String name;
 
     @Size(max = 255, message = "Channel description cannot exceed 255 characters")

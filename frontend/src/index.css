@@ -10,6 +10,7 @@
   --terminal-green: #6edb71;
   --terminal-gray: #9ba8b9;
   --hover-gray: #2e2e2e;
+  --terminal-red: #db6e7a;
 }
 
 body {
@@ -43,8 +44,16 @@ body {
   @apply text-[var(--terminal-green)] font-bold text-lg;
 }
 
+.terminal-command-prefix {
+  @apply text-[var(--terminal-green)] px-2;
+}
+
 .terminal-command {
   @apply text-[var(--terminal-green)] font-mono;
+}
+
+.terminal-comment {
+  @apply text-[var(--terminal-gray)] font-mono;
 }
 
 .terminal-subheading {
@@ -53,6 +62,25 @@ body {
 
 .terminal-output {
   @apply text-[var(--terminal-gray)] font-mono text-sm italic flex items-center space-x-2;
+}
+
+/* Sidebar List Item */
+.sidebar-list-item {
+  @apply text-[var(--terminal-gray)] font-mono text-sm cursor-pointer 
+  rounded py-1 px-2 whitespace-nowrap transition-all duration-200 
+  flex items-center justify-between w-full;
+}
+
+.sidebar-list-item:hover {
+  @apply bg-[var(--hover-gray)] transition-colors duration-200;
+}
+
+.sidebar-list-item:hover > div {
+  @apply text-[var(--terminal-green)];
+}
+
+.sidebar-list-item-prefix {
+  @apply text-[var(--terminal-green)] px-2;
 }
 
 /* Terminal output variants - without prefix */
@@ -74,16 +102,20 @@ body {
 
 .terminal-prompt {
   @apply text-[var(--terminal-gray)] font-mono text-sm cursor-pointer 
-  rounded px-2 py-1 whitespace-nowrap transition-all duration-200 
-  cursor-pointer whitespace-nowrap;
+  rounded py-1 whitespace-nowrap transition-all duration-200 
+  flex items-center space-x-2;
 }
 
 .terminal-prompt:hover {
-  @apply hover:text-[var(--terminal-green)] transition-colors duration-200;
+  @apply text-[var(--terminal-green)] bg-[var(--hover-gray)] transition-colors duration-200;
+}
+
+.terminal-prompt:hover .terminal-prompt-prefix {
+  @apply text-[var(--terminal-green)];
 }
 
 .terminal-prompt-prefix {
-  @apply text-[var(--terminal-green)];
+  @apply text-[var(--terminal-green)] px-2;
 }
 
 .terminal-toggle-button {

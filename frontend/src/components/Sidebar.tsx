@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useQueryClient } from '@tanstack/react-query';
 import { withRenderLogging } from '../utils/withRenderLogging';
@@ -11,17 +11,42 @@ import { TerminalPrompt } from './ui/TerminalPrompt';
 import { TerminalOutput } from './ui/TerminalOutput';
 import { useModal } from '../hooks/useModal';
 import { CreateChannelModal } from './modals/CreateChannelModal';
+import { DeleteChannelModal } from './modals/DeleteChannelModal';
+import { useChannelEvents } from '../hooks/websocket/useChannelEvents';
+import { useCreateChannel, useDeleteChannel } from '../services/channelService';
+import { SidebarListItem } from './ui/SidebarListItem';
 
 interface SidebarProps {
   channels: Channel[];
   users: User[];
+  onChannelsChange?: () => void;
 }
 
-const SidebarBase: React.FC<SidebarProps> = ({ channels, users }) => {
+const SidebarBase: React.FC<SidebarProps> = ({ channels, users, onChannelsChange }) => {
   const queryClient = useQueryClient();
   const [channelsOpen, setChannelsOpen] = useState(true);
   const [usersOpen, setUsersOpen] = useState(true);
+  const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const createChannelModal = useModal();
+  const deleteChannelModal = useModal();
+  const createChannelMutation = useCreateChannel();
+  const deleteChannelMutation = useDeleteChannel();
+
+  const handleChannelCreated = useCallback((channel: Channel) => {
+    logger.debug('state', 'Channel created event received', { channelId: channel.id });
+    onChannelsChange?.();
+  }, [onChannelsChange]);
+
+  const handleChannelDeleted = useCallback((channel: Channel) => {
+    logger.debug('state', 'Channel deleted event received', { channelId: channel.id });
+    onChannelsChange?.();
+  }, [onChannelsChange]);
+
+  // Subscribe to channel events
+  useChannelEvents({
+    onChannelCreated: handleChannelCreated,
+    onChannelDeleted: handleChannelDeleted,
+  });
 
   const toggleChannels = useCallback(() => {
     setChannelsOpen(prev => !prev);
@@ -44,9 +69,36 @@ const SidebarBase: React.FC<SidebarProps> = ({ channels, users }) => {
   }, [queryClient]);
 
   const handleCreateChannel = useCallback(async (name: string) => {
-    // TODO: Implement channel creation
-    console.log('Creating channel:', name);
-  }, []);
+    try {
+      await createChannelMutation.mutateAsync({
+        name,
+        type: 'PUBLIC',
+        memberIds: []
+      });
+      createChannelModal.closeModal();
+    } catch (error) {
+      logger.error('state', 'Failed to create channel', { error });
+      throw error;
+    }
+  }, [createChannelMutation, createChannelModal]);
+
+  const handleDeleteChannel = useCallback(async () => {
+    if (!channelToDelete) return;
+
+    try {
+      await deleteChannelMutation.mutateAsync(channelToDelete.id);
+      deleteChannelModal.closeModal();
+      setChannelToDelete(null);
+    } catch (error) {
+      logger.error('state', 'Failed to delete channel', { error });
+      throw error;
+    }
+  }, [deleteChannelMutation, deleteChannelModal, channelToDelete]);
+
+  const openDeleteModal = useCallback((channel: Channel) => {
+    setChannelToDelete(channel);
+    deleteChannelModal.openModal();
+  }, [deleteChannelModal]);
 
   return (
     <TerminalContainer className="w-80 h-full">
@@ -70,32 +122,32 @@ const SidebarBase: React.FC<SidebarProps> = ({ channels, users }) => {
             )}
             <span className="terminal-subheading">Channels</span>
           </button>
-          
+
           {channelsOpen && (
             <div id="channels-list" className="mt-2">
-              {channels.length === 0 ? (
-                <div key="no-channels" className="pl-4 space-y-2">
-                  <TerminalOutput message="No channels found." className="terminal-output-info" />
-                  <TerminalPrompt
-                    command="mkdir # Create new channel"
-                    onClick={createChannelModal.openModal}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2 pl-4">
-                  {channels.map((channel) => (
-                    <Link
-                      key={channel.id}
-                      to={`/channel/${channel.id}`}
-                      onMouseEnter={() => prefetchMessages(channel.id)}
-                      className="flex items-center space-x-2 text-[var(--terminal-gray)] hover:text-[var(--terminal-green)] hover:bg-[var(--hover-gray)] px-2 py-1 rounded focus-ring"
-                    >
-                      <span className="text-[var(--terminal-green)]">&gt;</span>
-                      <span>{channel.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
+              <div className="pl-4 space-y-2">
+                {channels.length === 0 ? (
+                  <TerminalOutput key="no-channels" message="No channels found." className="terminal-output-info" />
+                ) : (
+                  <div className="space-y-2">
+                    {channels.map((channel) => (
+                      <SidebarListItem
+                        key={channel.id}
+                        name={channel.name}
+                        to={`/channel/${channel.id}`}
+                        onMouseEnter={() => prefetchMessages(channel.id)}
+                        showDelete={true}
+                        onDelete={() => openDeleteModal(channel)}
+                      />
+                    ))}
+                  </div>
+                )}
+                <TerminalPrompt
+                  key="create-channel-btn"
+                  command="mkdir # Create new channel"
+                  onClick={createChannelModal.openModal}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -119,18 +171,17 @@ const SidebarBase: React.FC<SidebarProps> = ({ channels, users }) => {
             )}
             <span className="terminal-subheading">Users</span>
           </button>
-          
+
           {usersOpen && (
-            <div id="users-list" className="mt-2 space-y-2 pl-4">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center space-x-2 text-[var(--terminal-gray)] px-2 py-1"
-                >
-                  <span className="text-[var(--terminal-green)]">&gt;</span>
-                  <span>{user.username}</span>
-                </div>
-              ))}
+            <div id="users-list" className="mt-2">
+              <div className="pl-4 space-y-2">
+                {users.map((user) => (
+                  <SidebarListItem
+                    key={user.id}
+                    name={user.username}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -138,12 +189,19 @@ const SidebarBase: React.FC<SidebarProps> = ({ channels, users }) => {
       <CreateChannelModal
         isOpen={createChannelModal.isOpen}
         onClose={createChannelModal.closeModal}
-        onCreateChannel={async (channelName) => {
-          // TODO: Implement channel creation
-          console.log('Creating channel:', channelName);
-          createChannelModal.closeModal();
-        }}
+        onCreateChannel={handleCreateChannel}
       />
+      {channelToDelete && (
+        <DeleteChannelModal
+          isOpen={deleteChannelModal.isOpen}
+          onClose={() => {
+            deleteChannelModal.closeModal();
+            setChannelToDelete(null);
+          }}
+          onDeleteChannel={handleDeleteChannel}
+          channelName={channelToDelete.name}
+        />
+      )}
     </TerminalContainer>
   );
 };
