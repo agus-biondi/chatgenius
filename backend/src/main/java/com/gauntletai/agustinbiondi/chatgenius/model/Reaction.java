@@ -3,7 +3,7 @@ package com.gauntletai.agustinbiondi.chatgenius.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
-import java.time.Instant;
+
 import java.util.UUID;
 
 @Entity
@@ -11,13 +11,18 @@ import java.util.UUID;
        uniqueConstraints = @UniqueConstraint(
            name = "uk_reactions_message_user_emoji",
            columnNames = {"message_id", "user_id", "emoji"}
-       ))
+       ),
+       indexes = {
+           @Index(name = "idx_reactions_message", columnList = "message_id"),
+           @Index(name = "idx_reactions_user", columnList = "user_id"),
+           @Index(name = "idx_reactions_unique", columnList = "message_id,user_id,emoji", unique = true)
+       })
 @Getter
 @Setter
 @NoArgsConstructor
 @Builder
 @AllArgsConstructor
-@ToString(exclude = {"user", "message"})
+@ToString(exclude = {"message", "user"})
 @EqualsAndHashCode(of = "id")
 public class Reaction {
     @Id
@@ -26,7 +31,7 @@ public class Reaction {
     @Column(columnDefinition = "UUID", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private String emoji;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -36,7 +41,4 @@ public class Reaction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "message_id", nullable = false)
     private Message message;
-
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
-    private Instant createdAt;
 } 

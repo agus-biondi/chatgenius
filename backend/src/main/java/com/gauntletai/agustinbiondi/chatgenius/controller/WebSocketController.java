@@ -26,15 +26,29 @@ public class WebSocketController {
             MessageDTO messageDto,
             Principal principal
     ) {
-        log.info("Received message from user {} in channel {}: {}", 
-                principal.getName(), channelId, messageDto.getContent());
-        
-        MessageDTO processedMessage = messageService.handleIncomingMessage(messageDto, channelId, principal.getName());
-        
-        log.info("Broadcasting message {} to channel {}", 
-                processedMessage.getId(), channelId);
-        
-        return processedMessage;
+        try {
+            log.info("Received message from user {} in channel {}: {}", 
+                    principal.getName(), channelId, messageDto.getContent());
+            
+            if (messageDto == null || messageDto.getContent() == null) {
+                throw new IllegalArgumentException("Message content cannot be null");
+            }
+
+            MessageDTO processedMessage = messageService.handleIncomingMessage(messageDto, channelId, principal.getName());
+            
+            log.info("Broadcasting message {} to channel {}", 
+                    processedMessage.getId(), channelId);
+            
+            return processedMessage;
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid message received from user {} in channel {}: {}", 
+                    principal.getName(), channelId, e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Error processing message from user {} in channel {}: {}", 
+                    principal.getName(), channelId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @MessageMapping("/channels/{channelId}/typing")

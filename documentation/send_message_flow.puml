@@ -1,0 +1,35 @@
+@startuml
+actor User
+participant MessageInput
+participant WebSocketManager
+participant StompClient
+participant WebSocketController
+participant MessageService
+participant MessageRepository
+participant SimpMessagingTemplate
+participant WebSocketEventHandler
+
+==Message Send Flow==
+
+User -> MessageInput: Types message and submits
+MessageInput -> WebSocketManager: sendMessage(channelId, content)
+WebSocketManager -> StompClient: publish to /app/channels/{channelId}/messages
+StompClient -> WebSocketController: handleMessage(channelId, messageDTO, principal)
+WebSocketController -> MessageService: handleIncomingMessage(messageDTO, channelId, userId)
+MessageService -> MessageRepository: Save new Message
+MessageRepository --> MessageService: Returns saved Message
+MessageService --> WebSocketController: Returns MessageDTO
+WebSocketController -> SimpMessagingTemplate: Send to /topic/channels/{channelId}
+SimpMessagingTemplate -> WebSocketManager: Deliver message event
+WebSocketManager -> MessageInput: onMessage callback
+MessageInput --> User: Display new message
+
+==Future Features==
+
+note right of WebSocketEventHandler
+  To be implemented:
+  - Notify users subscribed to notifications topic
+  - Handle isTyping indicator
+end note
+
+@enduml

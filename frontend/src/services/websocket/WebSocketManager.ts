@@ -1,6 +1,6 @@
 import { Client, Message, StompSubscription } from '@stomp/stompjs';
 import { logger } from '../../utils/logger';
-import { MessageDTO, NotificationDTO, Channel } from '../../types';
+import { MessageDTO, NotificationDTO, Channel, CreateMessageRequest } from '../../types';
 import SockJS from 'sockjs-client';
 
 type PresenceStatus = 'online' | 'offline' | 'away';
@@ -258,14 +258,19 @@ export class WebSocketManager {
     }
   }
 
-  async sendMessage(channelId: string, content: string): Promise<void> {
+  async sendMessage(channelId: string, content: string, parentId?: string): Promise<void> {
     await this.ensureConnected();
+
+    const messageRequest: CreateMessageRequest = {
+      content,
+      parentId
+    };
 
     this.client.publish({
       destination: `/app/channels/${channelId}/messages`,
-      body: JSON.stringify({ content }),
+      body: JSON.stringify(messageRequest),
     });
-    logger.debug('state', 'Sent message to channel', { channelId, content });
+    logger.debug('state', 'Sent message to channel', { channelId, content, parentId });
   }
 
   async sendTypingEvent(channelId: string): Promise<void> {

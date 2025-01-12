@@ -29,4 +29,7 @@ public interface ChannelRepository extends JpaRepository<Channel, UUID> {
            "OR (c.type = 'DIRECT_MESSAGE' AND EXISTS " +
            "(SELECT m FROM ChannelMembership m WHERE m.channel = c AND m.user.userId = :userId))")
     List<Channel> findPublicAndUserDirectMessageChannels(@Param("userId") String userId);
+
+    @Query("SELECT COUNT(cm) > 0 FROM ChannelMembership cm WHERE cm.channel.id = :channelId AND cm.user.userId = :userId")
+    boolean isUserMember(UUID channelId, String userId);
 } 

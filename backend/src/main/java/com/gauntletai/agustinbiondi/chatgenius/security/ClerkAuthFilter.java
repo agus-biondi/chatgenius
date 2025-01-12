@@ -67,7 +67,7 @@ public class ClerkAuthFilter extends OncePerRequestFilter {
             var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
             log.debug("Setting authentication for user {} with role {}", user.getUserId(), user.getRole());
             var authentication = new UsernamePasswordAuthenticationToken(
-                    user.getUserId(),
+                    user,
                     null,
                     authorities
             );

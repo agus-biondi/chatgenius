@@ -1,10 +1,15 @@
 package com.gauntletai.agustinbiondi.chatgenius.controller;
 
 import com.gauntletai.agustinbiondi.chatgenius.dto.ChannelDTO;
+import com.gauntletai.agustinbiondi.chatgenius.dto.ChannelMessagesDTO;
+import com.gauntletai.agustinbiondi.chatgenius.dto.MessageDTO;
 import com.gauntletai.agustinbiondi.chatgenius.service.ChannelService;
+import com.gauntletai.agustinbiondi.chatgenius.service.MessageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +25,7 @@ import java.util.UUID;
 public class ChannelController {
 
     private final ChannelService channelService;
+    private final MessageService messageService;
 
     @PostMapping
     public ResponseEntity<ChannelDTO> createChannel(
@@ -102,5 +108,13 @@ public class ChannelController {
     public ResponseEntity<List<ChannelDTO>> getAvailableChannels(
             @AuthenticationPrincipal String userId) {
         return ResponseEntity.ok(channelService.findPublicAndUserDirectMessageChannels(userId));
+    }
+
+    @GetMapping("/{channelId}/messages")
+    public ResponseEntity<Page<MessageDTO>> getChannelMessages(
+            @PathVariable UUID channelId,
+            Pageable pageable) {
+        Page<MessageDTO> messages = messageService.getLatestParentMessagesWithDetails(channelId, pageable);
+        return ResponseEntity.ok(messages);
     }
 } 

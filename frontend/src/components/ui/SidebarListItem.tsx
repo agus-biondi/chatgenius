@@ -1,22 +1,21 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 
 interface SidebarListItemProps {
   name: string;
-  to?: string;
   onClick?: () => void;
   onMouseEnter?: () => void;
   onDelete?: () => void;
   showDelete?: boolean;
+  isSelected?: boolean;
 }
 
 export const SidebarListItem: React.FC<SidebarListItemProps> = ({ 
   name, 
-  to, 
   onClick,
   onMouseEnter,
   onDelete,
-  showDelete
+  showDelete,
+  isSelected
 }) => {
   const content = (
     <>
@@ -27,8 +26,8 @@ export const SidebarListItem: React.FC<SidebarListItemProps> = ({
       {showDelete && (
         <button
           onClick={(e) => {
-            e.preventDefault(); // Prevent navigation if it's a Link
-            e.stopPropagation(); // Prevent parent click
+            e.preventDefault();
+            e.stopPropagation();
             onDelete?.();
           }}
           className="opacity-0 group-hover:opacity-100 transition-all duration-200 font-mono flex items-center px-3 py-2 -my-2 -mr-2 hover:bg-[var(--terminal-hover)] group/delete"
@@ -41,24 +40,16 @@ export const SidebarListItem: React.FC<SidebarListItemProps> = ({
     </>
   );
 
-  if (to) {
-    return (
-      <Link
-        to={to}
-        onMouseEnter={onMouseEnter}
-        className="sidebar-list-item focus-ring group"
-      >
-        {content}
-      </Link>
-    );
-  }
+  const baseClasses = "sidebar-list-item focus-ring group";
+  const selectedClasses = isSelected ? "bg-[var(--hover-gray)] text-[var(--terminal-green)]" : "";
 
   return (
     <div 
       onClick={onClick}
-      className="sidebar-list-item focus-ring group"
+      onMouseEnter={onMouseEnter}
+      className={`${baseClasses} ${selectedClasses}`}
     >
       {content}
     </div>
   );
-}; 
+} 

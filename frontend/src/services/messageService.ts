@@ -2,15 +2,35 @@ import { useQuery } from '@tanstack/react-query';
 import apiClient from './apiClient';
 import { User } from './userService';
 import { logger } from '../utils/logger';
+import { MessageDTO } from '../types';
 
 export interface Message {
   id: string;
   content: string;
   channelId: string;
-  user: User;
+  userId: string;
+  username: string;
   createdAt: string;
   updatedAt: string;
+  parentId?: string;
+  isEdited: boolean;
 }
+
+export const fetchLatestParentMessages = async (channelId: string): Promise<MessageDTO[]> => {
+  logger.debug('api', `Fetching latest parent messages for channel ${channelId}`);
+  const response = await apiClient.get(`/channels/${channelId}/messages/parents`);
+  return response.data;
+};
+
+export const useLatestParentMessages = (channelId: string) => {
+  return useQuery<MessageDTO[]>({
+    queryKey: ['messages', channelId, 'parents'],
+    queryFn: () => fetchLatestParentMessages(channelId),
+    staleTime: 1000 * 5 * 60, // 5 minutes
+    refetchOnWindowFocus: false,
+    enabled: !!channelId,
+  });
+};
 
 export const fetchMessages = async (channelId: string): Promise<Message[]> => {
   logger.debug('api', `Fetching messages for channel ${channelId}`);

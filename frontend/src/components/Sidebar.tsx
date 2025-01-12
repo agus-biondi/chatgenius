@@ -9,28 +9,31 @@ import { logger } from '../utils/logger';
 import { TerminalContainer } from './ui/TerminalContainer';
 import { TerminalPrompt } from './ui/TerminalPrompt';
 import { TerminalOutput } from './ui/TerminalOutput';
-import { useModal } from '../hooks/useModal';
-import { CreateChannelModal } from './modals/CreateChannelModal';
-import { DeleteChannelModal } from './modals/DeleteChannelModal';
 import { useChannelEvents } from '../hooks/websocket/useChannelEvents';
-import { useCreateChannel, useDeleteChannel } from '../services/channelService';
 import { SidebarListItem } from './ui/SidebarListItem';
 
 interface SidebarProps {
   channels: Channel[];
   users: User[];
   onChannelsChange?: () => void;
+  onChannelSelect: (channel: Channel) => void;
+  selectedChannel: Channel | null;
+  onCreateChannel: () => void;
+  onDeleteChannel: (channel: Channel) => void;
 }
 
-const SidebarBase: React.FC<SidebarProps> = ({ channels, users, onChannelsChange }) => {
+const SidebarBase: React.FC<SidebarProps> = ({ 
+  channels, 
+  users, 
+  onChannelsChange,
+  onChannelSelect,
+  selectedChannel,
+  onCreateChannel,
+  onDeleteChannel
+}) => {
   const queryClient = useQueryClient();
   const [channelsOpen, setChannelsOpen] = useState(true);
   const [usersOpen, setUsersOpen] = useState(true);
-  const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
-  const createChannelModal = useModal();
-  const deleteChannelModal = useModal();
-  const createChannelMutation = useCreateChannel();
-  const deleteChannelMutation = useDeleteChannel();
 
   const handleChannelCreated = useCallback((channel: Channel) => {
     logger.debug('state', 'Channel created event received', { channelId: channel.id });
@@ -68,38 +71,6 @@ const SidebarBase: React.FC<SidebarProps> = ({ channels, users, onChannelsChange
     logger.debug('api', `Prefetching messages for channel ${channelId}`);
   }, [queryClient]);
 
-  const handleCreateChannel = useCallback(async (name: string) => {
-    try {
-      await createChannelMutation.mutateAsync({
-        name,
-        type: 'PUBLIC',
-        memberIds: []
-      });
-      createChannelModal.closeModal();
-    } catch (error) {
-      logger.error('state', 'Failed to create channel', { error });
-      throw error;
-    }
-  }, [createChannelMutation, createChannelModal]);
-
-  const handleDeleteChannel = useCallback(async () => {
-    if (!channelToDelete) return;
-
-    try {
-      await deleteChannelMutation.mutateAsync(channelToDelete.id);
-      deleteChannelModal.closeModal();
-      setChannelToDelete(null);
-    } catch (error) {
-      logger.error('state', 'Failed to delete channel', { error });
-      throw error;
-    }
-  }, [deleteChannelMutation, deleteChannelModal, channelToDelete]);
-
-  const openDeleteModal = useCallback((channel: Channel) => {
-    setChannelToDelete(channel);
-    deleteChannelModal.openModal();
-  }, [deleteChannelModal]);
-
   return (
     <TerminalContainer className="w-80 h-full">
       <div className="overflow-y-auto h-full space-y-8">
@@ -134,10 +105,11 @@ const SidebarBase: React.FC<SidebarProps> = ({ channels, users, onChannelsChange
                       <SidebarListItem
                         key={channel.id}
                         name={channel.name}
-                        to={`/channel/${channel.id}`}
+                        onClick={() => onChannelSelect(channel)}
                         onMouseEnter={() => prefetchMessages(channel.id)}
                         showDelete={true}
-                        onDelete={() => openDeleteModal(channel)}
+                        onDelete={() => onDeleteChannel(channel)}
+                        isSelected={selectedChannel?.id === channel.id}
                       />
                     ))}
                   </div>
@@ -145,7 +117,7 @@ const SidebarBase: React.FC<SidebarProps> = ({ channels, users, onChannelsChange
                 <TerminalPrompt
                   key="create-channel-btn"
                   command="mkdir # Create new channel"
-                  onClick={createChannelModal.openModal}
+                  onClick={onCreateChannel}
                 />
               </div>
             </div>
@@ -186,22 +158,6 @@ const SidebarBase: React.FC<SidebarProps> = ({ channels, users, onChannelsChange
           )}
         </div>
       </div>
-      <CreateChannelModal
-        isOpen={createChannelModal.isOpen}
-        onClose={createChannelModal.closeModal}
-        onCreateChannel={handleCreateChannel}
-      />
-      {channelToDelete && (
-        <DeleteChannelModal
-          isOpen={deleteChannelModal.isOpen}
-          onClose={() => {
-            deleteChannelModal.closeModal();
-            setChannelToDelete(null);
-          }}
-          onDeleteChannel={handleDeleteChannel}
-          channelName={channelToDelete.name}
-        />
-      )}
     </TerminalContainer>
   );
 };

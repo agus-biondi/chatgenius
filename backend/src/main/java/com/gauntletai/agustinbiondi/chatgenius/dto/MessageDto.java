@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -35,4 +37,10 @@ public class MessageDTO {
     private Instant editedAt;
 
     private boolean isEdited;
+
+    private Set<ReactionDTO> reactions;
+
+    private long replyCount;
+
+    private List<MessageDTO> topReplies;
 } 

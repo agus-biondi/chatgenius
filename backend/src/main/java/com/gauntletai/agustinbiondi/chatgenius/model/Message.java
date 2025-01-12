@@ -6,9 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Table(name = "messages",
@@ -19,15 +17,13 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-@Builder
 @AllArgsConstructor
-@ToString(exclude = {"createdBy", "channel", "reactions"})
+@Builder
+@ToString(exclude = {"createdBy", "channel", "reactions", "replies"})
 @EqualsAndHashCode(of = "id")
 public class Message {
     public enum Type {
-        TEXT,           // Regular text message
-        SYSTEM,         // System notification (user joined, etc.)
-        FILE            // File attachment message
+        TEXT, SYSTEM, FILE
     }
 
     @Id
@@ -56,6 +52,10 @@ public class Message {
     @JoinColumn(name = "parent_id")
     private Message parent;
 
+    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY)
+    @OrderBy("createdAt DESC")
+    private List<Message> replies;
+
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private Set<Reaction> reactions = new HashSet<>();
@@ -70,10 +70,4 @@ public class Message {
     @Column(name = "is_edited")
     @Builder.Default
     private boolean isEdited = false;
-
-    /**
-     * Thread structure:
-     * - If message is not in a thread: parent = null
-     * - If message is a reply: parent points to the thread's root message
-     */
 } 
