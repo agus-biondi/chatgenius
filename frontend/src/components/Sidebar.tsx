@@ -95,96 +95,98 @@ const SidebarBase: React.FC<SidebarProps> = ({
   }, [queryClient]);
 
   return (
-    <TerminalContainer className="w-80 h-full">
-      <div className="overflow-y-auto h-full space-y-8">
-        {/* Channels Section */}
-        <div>
-          {/* Command */}
-          <h2 className="terminal-command mb-2">$ ls ./channels/</h2>
+    <TerminalContainer className="w-80 h-screen flex flex-col">
+      <div className="flex-1 overflow-y-auto">
+        <div className="space-y-8 p-4">
+          {/* Channels Section */}
+          <div>
+            {/* Command */}
+            <h2 className="terminal-command mb-2">$ ls ./channels/</h2>
 
-          {/* Toggle Button */}
-          <button
-            onClick={toggleChannels}
-            aria-expanded={channelsOpen}
-            aria-controls="channels-list"
-            className="terminal-toggle-button"
-          >
-            {channelsOpen ? (
-              <ChevronRightIcon className="h-4 w-4 transform rotate-90 transition-transform duration-200" />
-            ) : (
-              <ChevronRightIcon className="h-4 w-4 transition-transform duration-200" />
-            )}
-            <span className="terminal-subheading">Channels</span>
-          </button>
+            {/* Toggle Button */}
+            <button
+              onClick={toggleChannels}
+              aria-expanded={channelsOpen}
+              aria-controls="channels-list"
+              className="terminal-toggle-button"
+            >
+              {channelsOpen ? (
+                <ChevronRightIcon className="h-4 w-4 transform rotate-90 transition-transform duration-200" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4 transition-transform duration-200" />
+              )}
+              <span className="terminal-subheading">Channels</span>
+            </button>
 
-          {channelsOpen && (
-            <div id="channels-list" className="mt-2">
-              <div className="pl-4 space-y-2">
-                {channels.length === 0 ? (
-                  <TerminalOutput key="no-channels" message="No channels found." className="terminal-output-info" />
-                ) : (
-                  <div className="space-y-2">
-                    {channels.map((channel) => (
-                      <SidebarListItem
-                        key={channel.id}
-                        name={channel.name}
-                        onClick={() => onChannelSelect(channel)}
-                        onMouseEnter={() => prefetchMessages(channel.id)}
-                        showDelete={true}
-                        onDelete={() => onDeleteChannel(channel)}
-                        isSelected={selectedChannel?.id === channel.id}
-                      />
-                    ))}
-                  </div>
-                )}
-                <TerminalPrompt
-                  key="create-channel-btn"
-                  command="mkdir # Create new channel"
-                  onClick={onCreateChannel}
-                />
+            {channelsOpen && (
+              <div id="channels-list" className="mt-2">
+                <div className="pl-4 space-y-2">
+                  {channels.length === 0 ? (
+                    <TerminalOutput key="no-channels" message="No channels found." className="terminal-output-info" />
+                  ) : (
+                    <div className="space-y-2">
+                      {channels.map((channel) => (
+                        <SidebarListItem
+                          key={channel.id}
+                          name={channel.name}
+                          onClick={() => onChannelSelect(channel)}
+                          onMouseEnter={() => prefetchMessages(channel.id)}
+                          showDelete={true}
+                          onDelete={() => onDeleteChannel(channel)}
+                          isSelected={selectedChannel?.id === channel.id}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <TerminalPrompt
+                    key="create-channel-btn"
+                    command="mkdir # Create new channel"
+                    onClick={onCreateChannel}
+                  />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Users Section */}
-        <div>
-          {/* Command */}
-          <h2 className="terminal-command mb-2">$ ls ./users/</h2>
-
-          {/* Toggle Button */}
-          <button
-            onClick={toggleUsers}
-            aria-expanded={usersOpen}
-            aria-controls="users-list"
-            className="terminal-toggle-button"
-          >
-            {usersOpen ? (
-              <ChevronRightIcon className="h-4 w-4 transform rotate-90 transition-transform duration-200" />
-            ) : (
-              <ChevronRightIcon className="h-4 w-4 transition-transform duration-200" />
             )}
-            <span className="terminal-subheading">Users</span>
-          </button>
+          </div>
 
-          {usersOpen && (
-            <div id="users-list" className="mt-2">
-              <div className="pl-4 space-y-2">
-                {users.length === 0 ? (
-                  <TerminalOutput key="no-users" message="No users found." className="terminal-output-info" />
-                ) : (
-                  <div className="pl-4 space-y-2">
-                    {users.map((user) => (
-                      <SidebarListItem
-                        key={user.id}
-                        name={user.username}
-                      />
-                    ))}
-                  </div>
-                )}
+          {/* Users Section */}
+          <div>
+            {/* Command */}
+            <h2 className="terminal-command mb-2">$ ls ./users/</h2>
+
+            {/* Toggle Button */}
+            <button
+              onClick={toggleUsers}
+              aria-expanded={usersOpen}
+              aria-controls="users-list"
+              className="terminal-toggle-button"
+            >
+              {usersOpen ? (
+                <ChevronRightIcon className="h-4 w-4 transform rotate-90 transition-transform duration-200" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4 transition-transform duration-200" />
+              )}
+              <span className="terminal-subheading">Users</span>
+            </button>
+
+            {usersOpen && (
+              <div id="users-list" className="mt-2">
+                <div className="pl-4 space-y-2">
+                  {users.length === 0 ? (
+                    <TerminalOutput key="no-users" message="No users found." className="terminal-output-info" />
+                  ) : (
+                    <div className="pl-4 space-y-2">
+                      {users.map((user) => (
+                        <SidebarListItem
+                          key={user.id}
+                          name={user.username}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </TerminalContainer>
